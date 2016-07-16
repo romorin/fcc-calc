@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" id='credits'>
+	<defs>
+		<style type="text/css">
+			@font-face {
+				font-family: Roboto;
+				src: url(https://fonts.googleapis.com/css?family=Roboto:400italic);
+			}
+			g {
+				font-size: 32;
+				font-family: "Roboto", sans-serif;
+				font-style: italic;
+				
+				text-shadow: 0px 0px 40px #300;
+				stroke: #2f2e48;
+			}
+			.glow {
+				filter: url(#glow);
+				fill:white;	
+			}
+			.text {	
+			}
+		</style>
+		<filter id="glow" x="-1%" y="-1%" width="102%" height="102%">
+			<feGaussianBlur stdDeviation="0.2 0.2" result="glow"/>
+		</filter>
+	</defs>
+	<g>
+		<text x="0" y="20" fill="inherit" class="glow">BY ROMORIN</text>
+		<text x="0" y="20" fill="inherit" class="text">BY ROMORIN</text>	
+	</g>
+</svg>	

@@ -21,6 +21,10 @@ body {
 .inner > div {
 	background-color: rgba(255,0,0,0.5);
 }
+.button-text {
+	font-family: 'Roboto';
+	font-size: 18px;
+}
 #cscreen {
 	position: absolute;
 	left: 19.8%;
@@ -38,6 +42,17 @@ body {
 	height: 9.6%;
 
 	transform: rotate(-5deg);
+}
+#ccredits {
+	position: absolute;
+	left: 68.9%;
+	bottom: 8.34%;
+	height: 3.92%;
+
+	transform: rotate(-0.5deg);
+}
+#ccredits > * {
+	color: #2f2e48;
 }
 #c0 {
 	position: absolute;
