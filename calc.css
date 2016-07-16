@@ -7,13 +7,217 @@ body {
 }
 
 .calc > .inner {
+	position: relative;
 	width: 100%;
 	height: 100%;
-	
+
 	-moz-box-shadow:    3px 3px 5px 6px #ccc;
 	-webkit-box-shadow: 3px 3px 5px 6px #ccc;
 	box-shadow:         3px 3px 5px 6px #ccc;
-	
+
 	background-image: url("files/digital-calculator-cropped.jpg");
 	background-size: cover;
+}
+.inner > div {
+	background-color: rgba(255,0,0,0.5);
+}
+#cscreen {
+	position: absolute;
+	left: 19.8%;
+	top: 14.5%;
+	width: 42.3%;
+	height: 9.0%;
+
+	transform: rotate(-1.24deg);
+}
+#cspec {
+	position: absolute;
+	left: 80.2%;
+	top: 14.6%;
+	width: 4.3%;
+	height: 9.6%;
+
+	transform: rotate(-5deg);
+}
+#c0 {
+	position: absolute;
+	left: 11.6%;
+	top: 78.3%;
+	width: 20.5%;
+	height: 6.7%;
+}
+#c1 {
+	position: absolute;
+	left: 12.4%;
+	top: 66.9%;
+	width: 7.4%;
+	height: 6.5%;
+}
+#c2 {
+	position: absolute;
+	left: 25.1%;
+	top: 66.7%;
+	width: 7.6%;
+	height: 6.7%;
+}
+#c3 {
+	position: absolute;
+	left: 37.2%;
+	top: 67.1%;
+	width: 8.4%;
+	height: 6.1%;
+}
+#c4 {
+	position: absolute;
+	left: 13.0%;
+	top: 56.3%;
+	width: 7.3%;
+	height: 6.1%;
+}
+#c5 {
+	position: absolute;
+	left: 25.1%;
+	top: 56.5%;
+	width: 7.9%;
+	height: 6.1%;
+}
+#c6 {
+	position: absolute;
+	left: 37.5%;
+	top: 56.0%;
+	width: 8.1%;
+	height: 6.6%;
+}
+#c7 {
+	position: absolute;
+	left: 14.0%;
+	top: 46.2%;
+	width: 7.3%;
+	height: 5.9%;
+}
+#c8 {
+	position: absolute;
+	left: 25.7%;
+	top: 45.8%;
+	width: 7.8%;
+	height: 6.2%;
+}
+#c9 {
+	position: absolute;
+	left: 38.0%;
+	top: 46.1%;
+	width: 7.9%;
+	height: 5.6%;
+}
+#cdot {
+	position: absolute;
+	left: 37.1%;
+	top: 78.2%;
+	width: 8.4%;
+	height: 7.0%;
+}
+#cplus {
+	position: absolute;
+	left: 53.4%;
+	top: 67.0%;
+	width: 8.9%;
+	height: 18.0%;
+}
+#cminus {
+	position: absolute;
+	left: 53.1%;
+	top: 56.0%;
+	width: 8.8%;
+	height: 6.3%;
+}
+#cmult {
+	position: absolute;
+	left: 52.9%;
+	top: 45.5%;
+	width: 8.2%;
+	height: 6.1%;
+}
+#cdiv {
+	position: absolute;
+	left: 65.1%;
+	top: 45.3%;
+	width: 8.3%;
+	height: 6.3%;
+}
+#csign {
+	position: absolute;
+	left: 66.2%;
+	top: 56.0%;
+	width: 8.2%;
+	height: 6.1%;
+}
+#cequal {
+	position: absolute;
+	left: 66.3%;
+	top: 66.6%;
+	width: 9.2%;
+	height: 18.2%;
+}
+#cc {
+	position: absolute;
+	left: 14.5%;
+	top: 38.5%;
+	width: 7.9%;
+	height: 3.9%;
+}
+#cce {
+	position: absolute;
+	left: 26.2%;
+	top: 38.1%;
+	width: 8.0%;
+	height: 3.9%;
+}
+#csqrt {
+	position: absolute;
+	left: 37.8%;
+	top: 37.9%;
+	width: 8.1%;
+	height: 3.9%;
+}
+#cpercent {
+	position: absolute;
+	left: 52.5%;
+	top: 37.7%;
+	width: 8.4%;
+	height: 3.6%;
+}
+#coff {
+	position: absolute;
+	left: 64.5%;
+	top: 37.6%;
+	width: 8.4%;
+	height: 3.7%;
+}
+#cmc {
+	position: absolute;
+	left: 77.3%;
+	top: 45.3%;
+	width: 8.2%;
+	height: 6.0%;
+}
+#cmr {
+	position: absolute;
+	left: 78.6%;
+	top: 55.8%;
+	width: 8.2%;
+	height: 6.1%;
+}
+#cmminus {
+	position: absolute;
+	left: 79.0%;
+	top: 66.4%;
+	width: 8.8%;
+	height: 6.2%;
+}
+#cmplus {
+	position: absolute;
+	left: 79.8%;
+	top: 77.7%;
+	width: 8.9%;
+	height: 6.7%;
 }
