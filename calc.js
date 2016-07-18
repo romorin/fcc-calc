@@ -74,4 +74,9 @@ jQuery(document).ready(function() {
 		var id = jQuery(event.currentTarget).attr('id');
 		cButtons[id]();
 	});
+
+	// handle credits
+	jQuery(".ccredits").click(function (event) {
+		window.location.href = "http://www.freecodecamp.com/romorin";
+	});
 });

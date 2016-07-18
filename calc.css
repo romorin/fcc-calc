@@ -54,6 +54,10 @@ body {
 	width: auto;
 
 	transform: rotate(-0.5deg);
+	cursor: pointer;
+}
+.cbutton {
+	cursor: pointer;
 }
 #c0 {
 	position: absolute;
