@@ -26,7 +26,7 @@ LList.prototype = {
 			current = next;
 		}
 		callback(this._last);
-	},
+	}
 };
 
 function Node (data) {

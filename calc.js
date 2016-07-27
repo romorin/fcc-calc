@@ -206,10 +206,6 @@ NumberHandler.prototype = {
 		return result;
 	},
 
-	toScreen : function() {
-		return numStrToScreen(this.toString());
-	},
-
 	toNum : function () {
 		var str = this.toString();
 
@@ -225,6 +221,24 @@ NumberHandler.prototype = {
 	}
 };
 
+
+function OffCalcHandler() {}
+
+OffCalcHandler.prototype = {
+	addBinaryOp : function () {},
+	calculate : function () {},
+	insertDigitDot : function () {},
+	changeDigitSign : function () {},
+	insertDigit : function () {},
+	onOff : function () {},
+	onOn : function () {
+		_calcHandler = _onCalcHandler;
+	},
+	getDisplay : function () {
+		return '';
+	}
+};
+
 function CalcHandler() {
 	this._expr = new Expression();
 	this._numberHandler = new NumberHandler();
@@ -232,13 +246,6 @@ function CalcHandler() {
 }
 
 CalcHandler.prototype = {
-	onBtnClick : function (id) {
-		if (id in _cButtons) {
-			_cButtons[id]();
-			this._updateDisplay();
-		}
-	},
-
 	addBinaryOp : function(op) {
 		var addedNumber = false;
 		if (!this._numberHandler.isEmpty()) {
@@ -289,9 +296,15 @@ CalcHandler.prototype = {
 		this._numberHandler.insertDigit(digit);
 		this._expr.flushNewResult();
 	},
+	onOff : function () {
+		_calcHandler = _offCalcHandler;
+	},
+	onOn : function () {
+		this._numberHandler.pop();
+	},
 
-	_updateDisplay : function() {
-		jQuery('#cscreen').html(this._expr.screenText() + this._numberHandler.toScreen());
+	getDisplay : function() {
+		return this._expr.screenText() + numStrToScreen(this._numberHandler.toString());
 	}
 };
 
@@ -312,11 +325,11 @@ var _cButtons = {
 	cmult : function() {_calcHandler.addBinaryOp('*');},
 	cdiv : function() {_calcHandler.addBinaryOp('/');},
 	cequal : function() {_calcHandler.calculate();},
-	cc : function() {_calcHandler.clearCurrentNumber();},
+	cc : function() {_calcHandler.onOn();},
 	cce : function() {_calcHandler.addToScreen('E');},
 	csqrt : function() {_calcHandler.addToScreen('S');},
 	cpercent : function() {_calcHandler.addToScreen('%');},
-	coff : function() {_calcHandler.addToScreen('F');},
+	coff : function() {_calcHandler.onOff();},
 	csign : function() {_calcHandler.changeDigitSign();},
 	cmc : function() {_calcHandler.addToScreen('MC');},
 	cmr : function() {_calcHandler.addToScreen('MR');},
@@ -324,13 +337,20 @@ var _cButtons = {
 	cmplus : function() {_calcHandler.addToScreen('M+');}
 };
 
+function onBtnClick(id) {
+	if (id in _cButtons) {
+		_cButtons[id]();
+		jQuery('#cscreen').html(_calcHandler.getDisplay());
+	}
+}
+
 // to be done when the page is ready
 jQuery(document).ready(function() {
 	resizeCalc();
 
 	// call the appropriate handler when a button is clicked
 	jQuery(".cbutton").click(function (event) {
-		_calcHandler.onBtnClick(jQuery(event.currentTarget).attr('id'));
+		onBtnClick(jQuery(event.currentTarget).attr('id'));
 	});
 
 	// handle credits
@@ -339,7 +359,9 @@ jQuery(document).ready(function() {
 	});
 });
 
-var _calcHandler = new CalcHandler();
+var _onCalcHandler = new CalcHandler();
+var _offCalcHandler = new OffCalcHandler();
+var _calcHandler = _onCalcHandler;
 
 function resizeCalc() {
 	// get available space
