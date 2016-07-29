@@ -52,6 +52,7 @@ NumberNode.prototype = {
 var _operatorsList = {
 	'*' : new OpNode(10, '*', function (lhs, rhs) {return lhs*rhs;}),
 	'/' : new OpNode(10, '/', function (lhs, rhs) {return lhs/rhs;}),
+	'%' : new OpNode(10, '%', function (lhs, rhs) {return lhs%rhs;}),
 	'+' : new OpNode(20, '+', function (lhs, rhs) {return lhs+rhs;}),
 	'-' : new OpNode(20, '-', function (lhs, rhs) {return lhs-rhs;})
 };
@@ -328,7 +329,7 @@ var _cButtons = {
 	cc : function() {_calcHandler.onOn();},
 	cce : function() {_calcHandler.addToScreen('E');},
 	csqrt : function() {_calcHandler.addToScreen('S');},
-	cpercent : function() {_calcHandler.addToScreen('%');},
+	cpercent : function() {_calcHandler.addBinaryOp('%');},
 	coff : function() {_calcHandler.onOff();},
 	csign : function() {_calcHandler.changeDigitSign();},
 	cmc : function() {_calcHandler.addToScreen('MC');},
