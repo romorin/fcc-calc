@@ -150,6 +150,13 @@ Expression.prototype = {
 		}
 	},
 
+	clear : function () {
+		this._list = null;
+		this._operators = {};
+		this._screenText = '';
+		this._newResult = false;
+	},
+
 	pop : function () {
 		var last = this._list.last();
 		if (this._list.first() === last) {
@@ -237,7 +244,8 @@ OffCalcHandler.prototype = {
 	},
 	getDisplay : function () {
 		return '';
-	}
+	},
+	clearAll : function () {}
 };
 
 function CalcHandler() {
@@ -303,6 +311,10 @@ CalcHandler.prototype = {
 	onOn : function () {
 		this._numberHandler.pop();
 	},
+	clearAll : function () {
+		this._numberHandler.pop();
+		this._expr.clear();
+	},
 
 	getDisplay : function() {
 		return this._expr.screenText() + numStrToScreen(this._numberHandler.toString());
@@ -327,7 +339,7 @@ var _cButtons = {
 	cdiv : function() {_calcHandler.addBinaryOp('/');},
 	cequal : function() {_calcHandler.calculate();},
 	cc : function() {_calcHandler.onOn();},
-	cce : function() {_calcHandler.addToScreen('E');},
+	cce : function() {_calcHandler.clearAll();},
 	csqrt : function() {_calcHandler.addToScreen('S');},
 	cpercent : function() {_calcHandler.addBinaryOp('%');},
 	coff : function() {_calcHandler.onOff();},
