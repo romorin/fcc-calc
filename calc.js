@@ -5,36 +5,71 @@ var CALC_BORDER_SIZE = 0;
 var NEGATIVE_CHAR = '¯';
 var FLOAT_CHAR = ',';
 
-var OPERATOR_TYPE = 'Op';
-var VALUE_TYPE = 'Value';
-
-function OpNode(priority, screen, run) {
+function BinaryOp(priority, screen, run) {
 	this._priority = priority;
 	this._screen = screen;
 	this._run = run;
-	this.TYPE = OPERATOR_TYPE;
 }
 
-OpNode.prototype = {
+BinaryOp.prototype = {
+	canAdd : function (prev) {
+		return prev instanceof NumberNode ||
+				prev instanceof PostOp;
+	},
+	validEnding : function () {
+		return false;
+	},
 	priority : function () {
 		return this._priority;
 	},
 	screen : function () {
 		return this._screen;
 	},
-	run : function (lhs, rhs) {
-		return this._run(lhs, rhs);
-	},
-	canAdd : function (prev) {
-		return prev.TYPE === VALUE_TYPE;
-	},
-	validEnding : function () {
-		return false;
+	reduce : function (node) {
+		var lhs = node.prev();
+		var rhs = node.next();
+
+		var result = this._run(lhs.data().getValue(), rhs.data().getValue());
+
+		lhs.insertBefore(new NumberNode(result));
+		lhs.remove();
+		node.remove();
+		rhs.remove();
 	}
 };
+
+function PostOp(priority, screen, run) {
+	this._priority = priority;
+	this._screen = screen;
+	this._run = run;
+}
+
+PostOp.prototype = {
+	canAdd : function (prev) {
+		return prev instanceof NumberNode;
+	},
+	validEnding : function () {
+		return true;
+	},
+	priority : function () {
+		return this._priority;
+	},
+	screen : function () {
+		return this._screen;
+	},
+	reduce : function (node) {
+		var valueNode = node.prev();
+
+		var result = this._run(valueNode.data().getValue());
+
+		valueNode.insertBefore(new NumberNode(result));
+		valueNode.remove();
+		node.remove();
+	}
+};
+
 function NumberNode(value) {
 	this._value = value;
-	this.TYPE = VALUE_TYPE;
 }
 
 NumberNode.prototype = {
@@ -42,7 +77,7 @@ NumberNode.prototype = {
 		return this._value;
 	},
 	canAdd : function (prev) {
-		return prev === null  || prev.TYPE === OPERATOR_TYPE;
+		return prev === null  || prev instanceof BinaryOp;
 	},
 	validEnding : function () {
 		return true;
@@ -50,11 +85,14 @@ NumberNode.prototype = {
 };
 
 var _operatorsList = {
-	'*' : new OpNode(10, '*', function (lhs, rhs) {return lhs*rhs;}),
-	'/' : new OpNode(10, '/', function (lhs, rhs) {return lhs/rhs;}),
-	'%' : new OpNode(10, '%', function (lhs, rhs) {return lhs%rhs;}),
-	'+' : new OpNode(20, '+', function (lhs, rhs) {return lhs+rhs;}),
-	'-' : new OpNode(20, '-', function (lhs, rhs) {return lhs-rhs;})
+	'*' : new BinaryOp(10, '*', function (lhs, rhs) {return lhs*rhs;}),
+	'/' : new BinaryOp(10, '/', function (lhs, rhs) {return lhs/rhs;}),
+	'%' : new BinaryOp(10, '%', function (lhs, rhs) {return lhs%rhs;}),
+	'+' : new BinaryOp(20, '+', function (lhs, rhs) {return lhs+rhs;}),
+	'-' : new BinaryOp(20, '-', function (lhs, rhs) {return lhs-rhs;}),
+	// the calculator considers sqrt like calculate everything then do it, so hacking like
+	// a low priority op is enough for now
+	'SQRT' : new PostOp(30, 'SQRT', function (value) {return  Math.sqrt(value);})
 };
 
 function Expression() {
@@ -62,18 +100,6 @@ function Expression() {
 	this._operators = {};
 	this._screenText = '';
 	this._newResult = false;
-}
-
-function reduce(op) {
-	var lhs = op.prev();
-	var rhs = op.next();
-
-	var result = op.data().run(lhs.data().getValue(), rhs.data().getValue());
-
-	lhs.insertBefore(new NumberNode(result));
-	lhs.remove();
-	op.remove();
-	rhs.remove();
 }
 
 function pushNode(data, list) {
@@ -126,7 +152,7 @@ Expression.prototype = {
 
 		Object.keys(this._operators).forEach(function (key) {
 			this._operators[key].forEach(function (opNode) {
-				reduce(opNode.data());
+				opNode.data().data().reduce(opNode.data());
 				opNode.remove();
 			});
 			delete this._operators[key];
@@ -233,7 +259,7 @@ NumberHandler.prototype = {
 function OffCalcHandler() {}
 
 OffCalcHandler.prototype = {
-	addBinaryOp : function () {},
+	addOp : function () {},
 	calculate : function () {},
 	insertDigitDot : function () {},
 	changeDigitSign : function () {},
@@ -255,7 +281,7 @@ function CalcHandler() {
 }
 
 CalcHandler.prototype = {
-	addBinaryOp : function(op) {
+	addOp : function(op) {
 		var addedNumber = false;
 		if (!this._numberHandler.isEmpty()) {
 			this._expr.addNumber(this._numberHandler.toNum());
@@ -265,6 +291,12 @@ CalcHandler.prototype = {
 		} else {
 			this._expr.pop();
 		}
+	},
+
+	sqrt : function () {
+		var op = "SQRT";
+		this.addOp(op);
+		this.calculate();
 	},
 
 	calculate : function () {
@@ -333,15 +365,15 @@ var _cButtons = {
 	c8 : function() {_calcHandler.insertDigit('8');},
 	c9 : function() {_calcHandler.insertDigit('9');},
 	cdot : function() {_calcHandler.insertDigitDot();},
-	cplus : function() {_calcHandler.addBinaryOp('+');},
-	cminus : function() {_calcHandler.addBinaryOp('-');},
-	cmult : function() {_calcHandler.addBinaryOp('*');},
-	cdiv : function() {_calcHandler.addBinaryOp('/');},
+	cplus : function() {_calcHandler.addOp('+');},
+	cminus : function() {_calcHandler.addOp('-');},
+	cmult : function() {_calcHandler.addOp('*');},
+	cdiv : function() {_calcHandler.addOp('/');},
 	cequal : function() {_calcHandler.calculate();},
 	cc : function() {_calcHandler.onOn();},
 	cce : function() {_calcHandler.clearAll();},
-	csqrt : function() {_calcHandler.addToScreen('S');},
-	cpercent : function() {_calcHandler.addBinaryOp('%');},
+	csqrt : function() {_calcHandler.sqrt();},
+	cpercent : function() {_calcHandler.addOp('%');},
 	coff : function() {_calcHandler.onOff();},
 	csign : function() {_calcHandler.changeDigitSign();},
 	cmc : function() {_calcHandler.addToScreen('MC');},
