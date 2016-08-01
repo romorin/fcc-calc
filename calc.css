@@ -46,7 +46,14 @@ body {
 	height: 9.6%;
 
 	transform: rotate(-5deg);
+
+	background-color: rgb(255,0,0);
+	-moz-box-shadow:    0 0 5px 3px rgb(255,0,0);
+	-webkit-box-shadow: 0 0 5px 3px rgb(255,0,0);
+	box-shadow:    	  0 0 5px 3px rgb(255,0,0);
+	opacity: 0;
 }
+
 .ccredits {
 	position: absolute;
 	left: 64.2%;

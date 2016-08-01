@@ -259,7 +259,7 @@ function CalcHandler() {
 }
 
 CalcHandler.prototype.addOp = function(op) {
-	this._operate(this._expr.addOperator.bind(this._expr, op));
+	return this._operate(this._expr.addOperator.bind(this._expr, op));
 };
 
 CalcHandler.prototype.sqrt = function () {
@@ -278,6 +278,7 @@ CalcHandler.prototype.sqrt = function () {
 	}
 	if (calculated) {
 		this._numberAccumulator = null;
+		return true;
 	} else {
 		if (addedSqrt) {
 			this._expr.pop();
@@ -286,28 +287,35 @@ CalcHandler.prototype.sqrt = function () {
 			this._expr.pop();
 		}
 	}
+	return false;
 };
 
 CalcHandler.prototype.calculate = function () {
-	this._operate(this._expr.run.bind(this._expr));
+	return this._operate(this._expr.run.bind(this._expr));
 };
 
 CalcHandler.prototype.insertDigitDot = function () {
 	if (this._checkCurrentNumber()) {
 		this._numberAccumulator.insertDigitDot();
+		return true;
 	}
+	return false;
 };
 
 CalcHandler.prototype.changeDigitSign = function () {
 	if (this._checkCurrentNumber()) {
 		this._numberAccumulator.changeDigitSign();
+		return true;
 	}
+	return false;
 };
 
 CalcHandler.prototype.insertDigit = function (digit) {
 	if (this._checkCurrentNumber()) {
 		this._numberAccumulator.insertDigit(digit);
+		return true;
 	}
+	return false;
 };
 
 CalcHandler.prototype.onOff = function () { _calcHandler = _offCalcHandler; };
@@ -324,25 +332,10 @@ CalcHandler.prototype.clearAll = function () {
 	this._numberAccumulator = null;
 };
 
-CalcHandler.prototype.memoryRecall = function () {
-	this._expr.addNumber(this._memory.get());
-};
-
+CalcHandler.prototype.memoryRecall = function () { this._expr.addNumber(this._memory.get()); };
 CalcHandler.prototype.memoryClear = function () { this._memory.clear(); };
-
-CalcHandler.prototype.memoryAdd = function () {
-	var lastAnswer = this._expr.lastAnswer();
-	if (lastAnswer !== null) {
-		this._memory.add(lastAnswer);
-	}
-};
-
-CalcHandler.prototype.memorySubstract = function () {
-	var lastAnswer = this._expr.lastAnswer();
-	if (lastAnswer !== null) {
-		this._memory.substract(lastAnswer);
-	}
-};
+CalcHandler.prototype.memoryAdd = function () { this._memory.add(this._expr.lastAnswer()); };
+CalcHandler.prototype.memorySubstract = function () { this._memory.substract(this._expr.lastAnswer()); };
 
 CalcHandler.prototype.getDisplay = function() {
 	var text = this._expr.screenText();
@@ -373,47 +366,61 @@ CalcHandler.prototype._operate = function (callback) {
 	}
 	if(callback()){
 		this._numberAccumulator = null;
+		return true;
 	} else if (addedNumber){
 		this._expr.pop();
 	}
+	return false;
 };
 
 var _cButtons = {
-	c0 : function() {_calcHandler.insertDigit('0');},
-	c1 : function() {_calcHandler.insertDigit('1');},
-	c2 : function() {_calcHandler.insertDigit('2');},
-	c3 : function() {_calcHandler.insertDigit('3');},
-	c4 : function() {_calcHandler.insertDigit('4');},
-	c5 : function() {_calcHandler.insertDigit('5');},
-	c6 : function() {_calcHandler.insertDigit('6');},
-	c7 : function() {_calcHandler.insertDigit('7');},
-	c8 : function() {_calcHandler.insertDigit('8');},
-	c9 : function() {_calcHandler.insertDigit('9');},
-	cdot : function() {_calcHandler.insertDigitDot();},
-	cplus : function() {_calcHandler.addOp('+');},
-	cminus : function() {_calcHandler.addOp('-');},
-	cmult : function() {_calcHandler.addOp('*');},
-	cdiv : function() {_calcHandler.addOp('/');},
-	cequal : function() {_calcHandler.calculate();},
-	cc : function() {_calcHandler.onOn();},
-	cce : function() {_calcHandler.clearAll();},
-	csqrt : function() {_calcHandler.sqrt();},
-	cpercent : function() {_calcHandler.addOp('%');},
-	coff : function() {_calcHandler.onOff();},
-	csign : function() {_calcHandler.changeDigitSign();},
-	cmc : function() {_calcHandler.memoryClear();},
-	cmr : function() {_calcHandler.memoryRecall();},
-	cmminus : function() {_calcHandler.memorySubstract();},
-	cmplus : function() {_calcHandler.memoryAdd();}
+	c0 : function() { return _calcHandler.insertDigit('0');},
+	c1 : function() { return _calcHandler.insertDigit('1');},
+	c2 : function() { return _calcHandler.insertDigit('2');},
+	c3 : function() { return _calcHandler.insertDigit('3');},
+	c4 : function() { return _calcHandler.insertDigit('4');},
+	c5 : function() { return _calcHandler.insertDigit('5');},
+	c6 : function() { return _calcHandler.insertDigit('6');},
+	c7 : function() { return _calcHandler.insertDigit('7');},
+	c8 : function() { return _calcHandler.insertDigit('8');},
+	c9 : function() { return _calcHandler.insertDigit('9');},
+	cdot : function() { return _calcHandler.insertDigitDot();},
+	cplus : function() { return _calcHandler.addOp('+');},
+	cminus : function() { return _calcHandler.addOp('-');},
+	cmult : function() { return _calcHandler.addOp('*');},
+	cdiv : function() { return _calcHandler.addOp('/');},
+	cequal : function() { return _calcHandler.calculate();},
+	cc : function() { return _calcHandler.onOn();},
+	cce : function() { return _calcHandler.clearAll();},
+	csqrt : function() { return _calcHandler.sqrt();},
+	cpercent : function() { return _calcHandler.addOp('%');},
+	coff : function() { return _calcHandler.onOff();},
+	csign : function() { return _calcHandler.changeDigitSign();},
+	cmc : function() { return _calcHandler.memoryClear();},
+	cmr : function() { return _calcHandler.memoryRecall();},
+	cmminus : function() { return _calcHandler.memorySubstract();},
+	cmplus : function() { return _calcHandler.memoryAdd();}
 };
 
 function updateScreen() {
 	jQuery('#cscreen').html(_calcHandler.getDisplay());
 }
 
+function onError() {
+	jQuery("#cspec").animate({
+			opacity: 0.5
+		}, 100, 'swing', function () {
+			jQuery("#cspec").animate({
+				opacity: 0
+			}, 100, 'swing');
+	});
+}
+
 function onBtnClick(id) {
 	if (id in _cButtons) {
-		_cButtons[id]();
+		if(!_cButtons[id]()) {
+			onError();
+		}
 		updateScreen();
 	}
 }
