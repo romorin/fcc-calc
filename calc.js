@@ -7,6 +7,9 @@ var FLOAT_CHAR = ',';
 function numStrToScreen(numStr) {
 	return numStr.replace('-' ,NEGATIVE_CHAR).replace('.', FLOAT_CHAR);
 }
+function numToScreen(num) {
+	return numStrToScreen(parseFloat(num.toFixed(10)).toString());
+}
 
 function Op(priority, screen, run) {
 	this._priority = priority;
@@ -69,7 +72,7 @@ NumberNode.prototype.validEnding = function () { return true; };
 NumberNode.prototype.toNum = function () { return this._value; };
 
 NumberNode.prototype.screen = function () {
-	return numStrToScreen(this._value.toString());
+	return numToScreen(this._value);
 };
 
 var _operatorsList = {
@@ -224,12 +227,7 @@ NumberAccumulator.prototype.toString = function () {
 
 NumberAccumulator.prototype.toNum = function () {
 	var str = this.toString();
-
-	if (this._numberStr.indexOf('.') !== -1) {
-		return parseFloat(str);
-	} else {
-		return parseInt(str);
-	}
+	return parseFloat(str);
 };
 
 NumberAccumulator.prototype.valid = function () {
@@ -352,7 +350,7 @@ CalcHandler.prototype.getDisplay = function() {
 		text += numStrToScreen(this._numberAccumulator.toString());
 	}
 	if (text === '' && this._expr.lastAnswer() !== null){
-		text = numStrToScreen(this._expr.lastAnswer().toString());
+		text = numToScreen(this._expr.lastAnswer());
 	}
 	return text;
 };
