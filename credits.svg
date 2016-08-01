@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" id='credits'
-		viewBox="0 0 108 16"
-		width="108px"
+		viewBox="0 0 145 16"
+		width="145px"
 		height="16px"
 		preserveAspectRatio="xMinYMin meet"
 		style="overflow: visible;">
@@ -29,7 +29,7 @@
 		</filter>
 	</defs>
 	<g>
-		<text x="2" y="14" fill="inherit" class="glowing">BY ROMORIN</text>
-		<text x="2" y="14" fill="inherit">BY ROMORIN</text>
+		<text x="2" y="14" fill="inherit" class="glowing">APP BY ROMORIN</text>
+		<text x="2" y="14" fill="inherit">APP BY ROMORIN</text>
 	</g>
 </svg>	

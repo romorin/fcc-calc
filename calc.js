@@ -1,87 +1,75 @@
 var CALC_RATIO = 0.898;
 var CALC_BORDER_SIZE = 0;
 
-
 var NEGATIVE_CHAR = '¯';
 var FLOAT_CHAR = ',';
 
-function BinaryOp(priority, screen, run) {
+function numStrToScreen(numStr) {
+	return numStr.replace('-' ,NEGATIVE_CHAR).replace('.', FLOAT_CHAR);
+}
+
+function Op(priority, screen, run) {
 	this._priority = priority;
 	this._screen = screen;
 	this._run = run;
 }
 
-BinaryOp.prototype = {
-	canAdd : function (prev) {
-		return prev instanceof NumberNode ||
-				prev instanceof PostOp;
-	},
-	validEnding : function () {
-		return false;
-	},
-	priority : function () {
-		return this._priority;
-	},
-	screen : function () {
-		return this._screen;
-	},
-	reduce : function (node) {
-		var lhs = node.prev();
-		var rhs = node.next();
+Op.prototype.priority = function () { return this._priority; };
+Op.prototype.screen = function () { return this._screen; };
 
-		var result = this._run(lhs.data().getValue(), rhs.data().getValue());
+function BinaryOp(priority, screen, run) {
+	Op.call(this, priority, screen, run);
+}
 
-		lhs.insertBefore(new NumberNode(result));
-		lhs.remove();
-		node.remove();
-		rhs.remove();
-	}
+BinaryOp.prototype = Object.create(Op.prototype);
+BinaryOp.prototype.constructor = BinaryOp;
+
+BinaryOp.prototype.validEnding = function () { return false; };
+
+BinaryOp.prototype.canAdd = function (prev) {
+	return prev instanceof NumberNode || prev instanceof PostOp;
+};
+
+BinaryOp.prototype.reduce = function (node) {
+	var lhs = node.prev();
+	var rhs = node.next();
+
+	var result = this._run(lhs.data().toNum(), rhs.data().toNum());
+
+	lhs.insertBefore(new NumberNode(result));
+	lhs.remove();
+	node.remove();
+	rhs.remove();
 };
 
 function PostOp(priority, screen, run) {
-	this._priority = priority;
-	this._screen = screen;
-	this._run = run;
+	Op.call(this, priority, screen, run);
 }
+PostOp.prototype = Object.create(Op.prototype);
+PostOp.prototype.constructor = PostOp;
 
-PostOp.prototype = {
-	canAdd : function (prev) {
-		return prev instanceof NumberNode;
-	},
-	validEnding : function () {
-		return true;
-	},
-	priority : function () {
-		return this._priority;
-	},
-	screen : function () {
-		return this._screen;
-	},
-	reduce : function (node) {
-		var valueNode = node.prev();
+PostOp.prototype.canAdd = function (prev) { return prev instanceof NumberNode; };
+PostOp.prototype.validEnding = function () { return true; };
 
-		var result = this._run(valueNode.data().getValue());
+PostOp.prototype.reduce = function (node) {
+	var valueNode = node.prev();
 
-		valueNode.insertBefore(new NumberNode(result));
-		valueNode.remove();
-		node.remove();
-	}
+	var result = this._run(valueNode.data().toNum());
+
+	valueNode.insertBefore(new NumberNode(result));
+	valueNode.remove();
+	node.remove();
 };
 
-function NumberNode(value) {
-	this._value = value;
+function NumberNode(num) {
+	this._value = num;
 }
 
-NumberNode.prototype = {
-	getValue : function () {
-		return this._value;
-	},
-	canAdd : function (prev) {
-		return prev === null  || prev instanceof BinaryOp;
-	},
-	validEnding : function () {
-		return true;
-	}
+NumberNode.prototype.validEnding = function () { return true; };
+NumberNode.prototype.toNum = function () { return this._value; };
+
+NumberNode.prototype.screen = function () {
+	return numStrToScreen(this._value.toString());
 };
 
 var _operatorsList = {
@@ -95,13 +83,6 @@ var _operatorsList = {
 	'SQRT' : new PostOp(30, 'SQRT', function (value) {return  Math.sqrt(value);})
 };
 
-function Expression() {
-	this._list = null;
-	this._operators = {};
-	this._screenText = '';
-	this._newResult = false;
-}
-
 function pushNode(data, list) {
 	if (list) {
 		return list.last().insertAfter(data).getList();
@@ -110,246 +91,292 @@ function pushNode(data, list) {
 	}
 }
 
-function numberToScreen(num) {
-	return numStrToScreen(num.toString());
+function Expression() {
+	this._list = null;
+	this._operators = {};
+	this._lastAnswer = new NumberNode(0);
 }
-function numStrToScreen(numStr) {
-	return numStr.replace('-' ,NEGATIVE_CHAR).replace('.', FLOAT_CHAR);
-}
 
-Expression.prototype = {
-	addOperator : function (op) {
-		var opNode = _operatorsList[op];
-		var prev = this._list ? this._list.last().data() : null;
-		if (opNode && opNode.canAdd(prev)) {
-			this._list = pushNode(opNode , this._list);
-			this._operators[opNode.priority()] = pushNode(this._list.last(), this._operators[opNode.priority()]);
-			this._screenText += opNode.screen();
-			this._newResult = false;
-			return true;
-		}
+Expression.prototype.addOperator = function (opKey) {
+	var op = _operatorsList[opKey];
+	var prev = this._list ? this._list.last().data() : null;
+
+	var canAdd = op && op.canAdd(prev);
+	if (!canAdd && this._list === null && op.canAdd(this._lastAnswer)) {
+		this._list = pushNode(this._lastAnswer , this._list);
+		canAdd = true;
+	}
+
+	if (canAdd) {
+		this._list = pushNode(op , this._list);
+		this._operators[op.priority()] = pushNode(this._list.last(), this._operators[op.priority()]);
+	}
+	return canAdd;
+};
+
+Expression.prototype.canAddNumber = function () {
+	var prev = this._list ? this._list.last().data() : null;
+	return prev === null  || prev instanceof BinaryOp;
+};
+
+Expression.prototype.addNumber = function (num) {
+	if (this.canAddNumber(this._list) && jQuery.isNumeric(num)) {
+		this._list = pushNode(new NumberNode(num) , this._list);
+		return true;
+	}
+	return false;
+};
+
+Expression.prototype.run = function () {
+	if (!this._list.last().data().validEnding()) {
 		return false;
-	},
+	}
 
-	addNumber : function (value) {
-		if (jQuery.isNumeric(value)) {
-			var nNode = new NumberNode(value);
-			var prev = this._list ? this._list.last().data() : null;
-			if (nNode.canAdd(prev)) {
-				this._list = pushNode(nNode , this._list);
-				this._screenText += numberToScreen(nNode.getValue());
-				this._newResult = false;
-				return true;
-			}
-		}
-		return false;
-	},
+	Object.keys(this._operators).forEach(function (key) {
+		this._operators[key].forEach(function (opNode) {
+			opNode.data().data().reduce(opNode.data());
+			opNode.remove();
+		});
+		delete this._operators[key];
+	}, this);
 
-	run : function () {
-		if (!this._list.last().data().validEnding()) {
-			return null;
-		}
+	this._lastAnswer = this._list.last().data();
+	this._list = null;
 
-		Object.keys(this._operators).forEach(function (key) {
-			this._operators[key].forEach(function (opNode) {
-				opNode.data().data().reduce(opNode.data());
-				opNode.remove();
-			});
-			delete this._operators[key];
-		}, this);
+	return true;
+};
 
-		var result = this._list.last().data().getValue();
-		this._screenText = numberToScreen(result);
-		this._newResult = true;
-		return result;
-	},
+Expression.prototype.screenText = function () {
+	var text = '';
+	if (this._list !== null) {
+		this._list.forEach(function (node) {
+			text += node.data().screen();
+		});
+	}
+	return text;
+};
 
-	screenText : function () {
-		return this._screenText;
-	},
-
-	// todo find more elegant way
-	flushNewResult : function () {
-		if (this._newResult) {
-			this._list = null;
-			this._screenText = '';
-		}
-	},
-
-	clear : function () {
+Expression.prototype.clear = function () {
+	if (this._list !== null) {
 		this._list = null;
 		this._operators = {};
-		this._screenText = '';
-		this._newResult = false;
-	},
-
-	pop : function () {
-		var last = this._list.last();
-		if (this._list.first() === last) {
-			this._list = null;
-			this._operators = {};
-		} else {
-			if (last.data().TYPE === OPERATOR_TYPE) {
-				var opRow = this._operators[last.data().priority()];
-
-				if (opRow.first() === opRow.last()) {
-					delete this._operators[last.data().priority()];
-				} else {
-					opRow.last().remove();
-				}
-			}
-			last.remove();
-		}
+	} else {
+		this._lastAnswer = new NumberNode(0);
 	}
 };
 
-function NumberHandler() {
+Expression.prototype.pop = function () {
+	var last = this._list.last();
+	if (this._list.first() === last) {
+		this.clear();
+	} else {
+		if (last.data() instanceof Op) {
+			var opRow = this._operators[last.data().priority()];
+			if (opRow.first() === opRow.last()) {
+				delete this._operators[last.data().priority()];
+			} else {
+				opRow.last().remove();
+			}
+		}
+		last.remove();
+	}
+};
+
+Expression.prototype.lastAnswer = function () {
+	return this._lastAnswer.toNum();
+};
+
+function Memory() {
+	this._currentSum = 0;
+}
+
+Memory.prototype.get = function () { return this._currentSum; };
+Memory.prototype.add = function (value) { this._currentSum += value; };
+Memory.prototype.substract = function (value) { this._currentSum -= value; };
+Memory.prototype.clear = function () { this._currentSum = 0; };
+
+function NumberAccumulator() {
 	this._numberStr = '';
 	this._isFloat = false;
 	this._isPositive = true;
 }
 
-NumberHandler.prototype = {
-	insertDigitDot : function () {
-		if (!this._isFloat) {
-			this._numberStr += '.';
-			this._isFloat = true;
-		}
-	},
-
-	changeDigitSign: function () {
-		this._isPositive = !this._isPositive;
-	},
-
-	insertDigit : function (digit) {
-		this._numberStr += digit;
-	},
-
-	pop : function () {
-		var num = this.toNum();
-		this._numberStr = '';
-		this._isFloat = false;
-		this._isPositive = true;
-
-		return num;
-	},
-
-	toString : function () {
-		var result = this._isPositive ? '' : '-';
-		result += this._numberStr;
-		return result;
-	},
-
-	toNum : function () {
-		var str = this.toString();
-
-		if (this._isFloat) {
-			return parseFloat(str);
-		} else {
-			return parseInt(str);
-		}
-	},
-
-	isEmpty : function () {
-		return this._numberStr === '';
+NumberAccumulator.prototype.insertDigitDot = function () {
+	if (!this._isFloat) {
+		this._numberStr += '.';
+		this._isFloat = true;
 	}
 };
 
+NumberAccumulator.prototype.changeDigitSign = function () {
+	this._isPositive = !this._isPositive;
+};
+
+NumberAccumulator.prototype.insertDigit = function (digit) {
+	this._numberStr += digit;
+};
+
+NumberAccumulator.prototype.toString = function () {
+	var result = this._isPositive ? '' : '-';
+	result += this._numberStr;
+	return result;
+};
+
+NumberAccumulator.prototype.toNum = function () {
+	var str = this.toString();
+
+	if (this._numberStr.indexOf('.') !== -1) {
+		return parseFloat(str);
+	} else {
+		return parseInt(str);
+	}
+};
+
+NumberAccumulator.prototype.valid = function () {
+	return this._numberStr !== '' || this._numberStr !== '-' ||
+			this._numberStr.charAt(this._numberStr.length -1) !== '.';
+};
 
 function OffCalcHandler() {}
 
-OffCalcHandler.prototype = {
-	addOp : function () {},
-	calculate : function () {},
-	insertDigitDot : function () {},
-	changeDigitSign : function () {},
-	insertDigit : function () {},
-	onOff : function () {},
-	onOn : function () {
-		_calcHandler = _onCalcHandler;
-	},
-	getDisplay : function () {
-		return '';
-	},
-	clearAll : function () {}
-};
+OffCalcHandler.prototype.addOp = function () {};
+OffCalcHandler.prototype.calculate = function () {};
+OffCalcHandler.prototype.sqrt = function () {};
+OffCalcHandler.prototype.insertDigitDot = function () {};
+OffCalcHandler.prototype.changeDigitSign = function () {};
+OffCalcHandler.prototype.insertDigit = function () {};
+OffCalcHandler.prototype.onOff = function () {};
+OffCalcHandler.prototype.clearAll = function () {};
+OffCalcHandler.prototype.memoryRecall = function () {};
+OffCalcHandler.prototype.memoryClear = function () {};
+OffCalcHandler.prototype.memoryAdd = function () {};
+OffCalcHandler.prototype.memorySubstract = function () {};
+OffCalcHandler.prototype.onOn = function () { _calcHandler = _onCalcHandler; };
+OffCalcHandler.prototype.getDisplay = function () { return ''; };
 
 function CalcHandler() {
 	this._expr = new Expression();
-	this._numberHandler = new NumberHandler();
-	this._lastAnswer = null;
+	this._memory = new Memory();
+	this._numberAccumulator = null;
 }
 
-CalcHandler.prototype = {
-	addOp : function(op) {
-		var addedNumber = false;
-		if (!this._numberHandler.isEmpty()) {
-			this._expr.addNumber(this._numberHandler.toNum());
-		}
-		if (this._expr.addOperator(op)) {
-			this._numberHandler.pop();
-		} else {
-			this._expr.pop();
-		}
-	},
+CalcHandler.prototype.addOp = function(op) {
+	this._operate(this._expr.addOperator.bind(this._expr, op));
+};
 
-	sqrt : function () {
-		var op = "SQRT";
-		this.addOp(op);
-		this.calculate();
-	},
-
-	calculate : function () {
-		// add the last number
-		var addedNumber = false;
-		if (!this._numberHandler.isEmpty()) {
-			if(this._expr.addNumber(this._numberHandler.toNum())) {
-				addedNumber = true;
-			} else {
-				return false;
-			}
-		}
-
-		// run and save the result
-		var answer = this._expr.run();
-		if (answer !== null) {
-			this._lastAnswer = answer;
-			this._numberHandler.pop();
-
-			return true;
-		} else if (addedNumber) {
-			this._expr.pop();
-		}
+CalcHandler.prototype.sqrt = function () {
+	if (this._numberAccumulator !== null && !this._numberAccumulator.valid()) {
 		return false;
-	},
+	}
+	var addedNumber = false;
+	if (this._numberAccumulator !== null) {
+		addedNumber = this._expr.addNumber(this._numberAccumulator.toNum());
+	}
 
-	insertDigitDot : function () {
-		this._numberHandler.insertDigitDot();
-		this._expr.flushNewResult();
-	},
+	var addedSqrt = this._expr.addOperator("SQRT");
+	var calculated = false;
+	if (addedSqrt) {
+		calculated = this._expr.run();
+	}
+	if (calculated) {
+		this._numberAccumulator = null;
+	} else {
+		if (addedSqrt) {
+			this._expr.pop();
+		}
+		if (addedNumber) {
+			this._expr.pop();
+		}
+	}
+};
 
-	changeDigitSign: function () {
-		this._numberHandler.changeDigitSign();
-		this._expr.flushNewResult();
-	},
+CalcHandler.prototype.calculate = function () {
+	this._operate(this._expr.run.bind(this._expr));
+};
 
-	insertDigit : function (digit) {
-		this._numberHandler.insertDigit(digit);
-		this._expr.flushNewResult();
-	},
-	onOff : function () {
-		_calcHandler = _offCalcHandler;
-	},
-	onOn : function () {
-		this._numberHandler.pop();
-	},
-	clearAll : function () {
-		this._numberHandler.pop();
-		this._expr.clear();
-	},
+CalcHandler.prototype.insertDigitDot = function () {
+	if (this._checkCurrentNumber()) {
+		this._numberAccumulator.insertDigitDot();
+	}
+};
 
-	getDisplay : function() {
-		return this._expr.screenText() + numStrToScreen(this._numberHandler.toString());
+CalcHandler.prototype.changeDigitSign = function () {
+	if (this._checkCurrentNumber()) {
+		this._numberAccumulator.changeDigitSign();
+	}
+};
+
+CalcHandler.prototype.insertDigit = function (digit) {
+	if (this._checkCurrentNumber()) {
+		this._numberAccumulator.insertDigit(digit);
+	}
+};
+
+CalcHandler.prototype.onOff = function () { _calcHandler = _offCalcHandler; };
+CalcHandler.prototype.onOn = function () {
+	if (this._numberAccumulator !== null) {
+		this._numberAccumulator = null;
+	} else {
+		this._expr.pop();
+	}
+};
+
+CalcHandler.prototype.clearAll = function () {
+	this._expr.clear();
+	this._numberAccumulator = null;
+};
+
+CalcHandler.prototype.memoryRecall = function () {
+	this._expr.addNumber(this._memory.get());
+};
+
+CalcHandler.prototype.memoryClear = function () { this._memory.clear(); };
+
+CalcHandler.prototype.memoryAdd = function () {
+	var lastAnswer = this._expr.lastAnswer();
+	if (lastAnswer !== null) {
+		this._memory.add(lastAnswer);
+	}
+};
+
+CalcHandler.prototype.memorySubstract = function () {
+	var lastAnswer = this._expr.lastAnswer();
+	if (lastAnswer !== null) {
+		this._memory.substract(lastAnswer);
+	}
+};
+
+CalcHandler.prototype.getDisplay = function() {
+	var text = this._expr.screenText();
+	if (this._numberAccumulator !== null) {
+		text += numStrToScreen(this._numberAccumulator.toString());
+	}
+	if (text === '' && this._expr.lastAnswer() !== null){
+		text = numStrToScreen(this._expr.lastAnswer().toString());
+	}
+	return text;
+};
+
+CalcHandler.prototype._checkCurrentNumber = function () {
+	if (this._numberAccumulator === null && this._expr.canAddNumber()) {
+		this._numberAccumulator = new NumberAccumulator();
+	}
+	return this._numberAccumulator !== null;
+};
+
+CalcHandler.prototype._operate = function (callback) {
+	var addedNumber = false;
+	if (this._numberAccumulator !== null) {
+		if (this._numberAccumulator.valid()) {
+			this._expr.addNumber(this._numberAccumulator.toNum());
+		} else {
+			return false;
+		}
+	}
+	if(callback()){
+		this._numberAccumulator = null;
+	} else if (addedNumber){
+		this._expr.pop();
 	}
 };
 
@@ -376,22 +403,27 @@ var _cButtons = {
 	cpercent : function() {_calcHandler.addOp('%');},
 	coff : function() {_calcHandler.onOff();},
 	csign : function() {_calcHandler.changeDigitSign();},
-	cmc : function() {_calcHandler.addToScreen('MC');},
-	cmr : function() {_calcHandler.addToScreen('MR');},
-	cmminus : function() {_calcHandler.addToScreen('M-');},
-	cmplus : function() {_calcHandler.addToScreen('M+');}
+	cmc : function() {_calcHandler.memoryClear();},
+	cmr : function() {_calcHandler.memoryRecall();},
+	cmminus : function() {_calcHandler.memorySubstract();},
+	cmplus : function() {_calcHandler.memoryAdd();}
 };
+
+function updateScreen() {
+	jQuery('#cscreen').html(_calcHandler.getDisplay());
+}
 
 function onBtnClick(id) {
 	if (id in _cButtons) {
 		_cButtons[id]();
-		jQuery('#cscreen').html(_calcHandler.getDisplay());
+		updateScreen();
 	}
 }
 
 // to be done when the page is ready
 jQuery(document).ready(function() {
 	resizeCalc();
+	updateScreen();
 
 	// call the appropriate handler when a button is clicked
 	jQuery(".cbutton").click(function (event) {
