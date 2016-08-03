@@ -3,12 +3,13 @@ var CALC_BORDER_SIZE = 0;
 
 var NEGATIVE_CHAR = '¯';
 var FLOAT_CHAR = ',';
+var MAX_PRECISION = 15;
 
 function numStrToScreen(numStr) {
 	return numStr.replace('-' ,NEGATIVE_CHAR).replace('.', FLOAT_CHAR);
 }
 function numToScreen(num) {
-	return numStrToScreen(parseFloat(num.toFixed(10)).toString());
+	return numStrToScreen((num.toPrecision(MAX_PRECISION)/1).toString());
 }
 
 function Op(priority, screen, run) {
@@ -70,10 +71,7 @@ function NumberNode(num) {
 
 NumberNode.prototype.validEnding = function () { return true; };
 NumberNode.prototype.toNum = function () { return this._value; };
-
-NumberNode.prototype.screen = function () {
-	return numToScreen(this._value);
-};
+NumberNode.prototype.screen = function () { return numToScreen(this._value); };
 
 var _operatorsList = {
 	'*' : new BinaryOp(10, '*', function (lhs, rhs) {return lhs*rhs;}),
@@ -185,9 +183,7 @@ Expression.prototype.pop = function () {
 	}
 };
 
-Expression.prototype.lastAnswer = function () {
-	return this._lastAnswer.toNum();
-};
+Expression.prototype.lastAnswer = function () { return this._lastAnswer.toNum(); };
 
 function Memory() {
 	this._currentSum = 0;
@@ -199,40 +195,68 @@ Memory.prototype.substract = function (value) { this._currentSum -= value; };
 Memory.prototype.clear = function () { this._currentSum = 0; };
 
 function NumberAccumulator() {
-	this._numberStr = '';
-	this._isFloat = false;
-	this._isPositive = true;
+	this._number = 0;
+	this._floatOffset = null;
+	this._negative = false;
+	this._digits = 0;
 }
 
 NumberAccumulator.prototype.insertDigitDot = function () {
-	if (!this._isFloat) {
-		this._numberStr += '.';
-		this._isFloat = true;
+	if (this._floatOffset === null) {
+		this._floatOffset = 1;
 	}
+	return true;
 };
 
 NumberAccumulator.prototype.changeDigitSign = function () {
-	this._isPositive = !this._isPositive;
+	this._negative = !this._negative;
+	return true;
 };
 
 NumberAccumulator.prototype.insertDigit = function (digit) {
-	this._numberStr += digit;
+	if (this._floatOffset === null) {
+		this._number = this._number*10 + (+digit);
+	} else {
+		this._floatOffset *= 10;
+		this._number = this._number + (+digit) / this._floatOffset;
+	}
+	if (this._number !== 0) {
+		this._digits++;
+	}
+
+	return true;
 };
 
 NumberAccumulator.prototype.toString = function () {
-	var result = this._isPositive ? '' : '-';
-	result += this._numberStr;
-	return result;
+	var str = this._negative ? '-' : '';
+	if (this._digits > 0) {
+		str += this._absNum().toString();
+	} else if (this._floatOffset === 1) {
+		str += '0';
+	}
+	if (this._floatOffset === 1) {
+		str += '.';
+	}
+	return str;
 };
 
 NumberAccumulator.prototype.toNum = function () {
-	var str = this.toString();
-	return parseFloat(str);
+	var num = this._absNum();
+	if (this._negative) {
+		num = - this._number;
+	}
+	return num;
+};
+
+NumberAccumulator.prototype._absNum = function () {
+	if (this._digits === 0) {
+		return 0;
+	}
+	return  parseFloat(this._number.toPrecision(this._digits > 1 ? this._digits : 1));
 };
 
 NumberAccumulator.prototype.valid = function () {
-	return this._numberStr !== '' || this._numberStr !== '-' ||
-			this._numberStr.charAt(this._numberStr.length -1) !== '.';
+	return this._digits > 0 && this._floatOffset !== 1;
 };
 
 function OffCalcHandler() {}
@@ -325,17 +349,34 @@ CalcHandler.prototype.onOn = function () {
 	} else {
 		this._expr.pop();
 	}
+	return true;
 };
 
 CalcHandler.prototype.clearAll = function () {
 	this._expr.clear();
 	this._numberAccumulator = null;
+	return true;
 };
 
-CalcHandler.prototype.memoryRecall = function () { this._expr.addNumber(this._memory.get()); };
-CalcHandler.prototype.memoryClear = function () { this._memory.clear(); };
-CalcHandler.prototype.memoryAdd = function () { this._memory.add(this._expr.lastAnswer()); };
-CalcHandler.prototype.memorySubstract = function () { this._memory.substract(this._expr.lastAnswer()); };
+CalcHandler.prototype.memoryRecall = function () {
+	this._expr.addNumber(this._memory.get());
+	return true;
+};
+
+CalcHandler.prototype.memoryClear = function () {
+	this._memory.clear();
+	return true;
+};
+
+CalcHandler.prototype.memoryAdd = function () {
+	this._memory.add(this._expr.lastAnswer());
+	return true;
+};
+
+CalcHandler.prototype.memorySubstract = function () {
+	this._memory.substract(this._expr.lastAnswer());
+	return true;
+};
 
 CalcHandler.prototype.getDisplay = function() {
 	var text = this._expr.screenText();
