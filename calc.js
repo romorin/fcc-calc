@@ -110,7 +110,7 @@ NumberAccumulator.prototype.changeDigitSign = function () {
 };
 
 NumberAccumulator.prototype.insertDigit = function (digit) {
-	if (this._digits > MAX_PRECISION) {
+	if (this._digits >= MAX_PRECISION) {
 		return false;
 	}
 	if (this._floatOffset === null) {
