@@ -20,6 +20,7 @@ function Op(priority, screen, run) {
 
 Op.prototype.priority = function () { return this._priority; };
 Op.prototype.screen = function () { return this._screen; };
+Op.prototype.valid = function () { return true; };
 
 function BinaryOp(priority, screen, run) {
 	Op.call(this, priority, screen, run);
@@ -31,7 +32,7 @@ BinaryOp.prototype.constructor = BinaryOp;
 BinaryOp.prototype.validEnding = function () { return false; };
 
 BinaryOp.prototype.canAdd = function (prev) {
-	return prev instanceof NumberNode || prev instanceof PostOp;
+	return (prev instanceof NumberNode || prev instanceof PostOp) && prev.valid();
 };
 
 BinaryOp.prototype.reduce = function (node) {
@@ -40,7 +41,7 @@ BinaryOp.prototype.reduce = function (node) {
 
 	var result = this._run(lhs.data().toNum(), rhs.data().toNum());
 
-	lhs.insertBefore(new NumberNode(result));
+	lhs.insertBefore(new FixedNumberNode(result));
 	lhs.remove();
 	node.remove();
 	rhs.remove();
@@ -52,7 +53,7 @@ function PostOp(priority, screen, run) {
 PostOp.prototype = Object.create(Op.prototype);
 PostOp.prototype.constructor = PostOp;
 
-PostOp.prototype.canAdd = function (prev) { return prev instanceof NumberNode; };
+PostOp.prototype.canAdd = function (prev) { return prev instanceof NumberNode && prev.valid(); };
 PostOp.prototype.validEnding = function () { return true; };
 
 PostOp.prototype.reduce = function (node) {
@@ -60,18 +61,102 @@ PostOp.prototype.reduce = function (node) {
 
 	var result = this._run(valueNode.data().toNum());
 
-	valueNode.insertBefore(new NumberNode(result));
+	valueNode.insertBefore(new FixedNumberNode(result));
 	valueNode.remove();
 	node.remove();
 };
 
-function NumberNode(num) {
+function NumberNode() {}
+NumberNode.prototype.insertDigitDot = function () { return false; };
+NumberNode.prototype.changeDigitSign  = function () { return false; };
+NumberNode.prototype.insertDigit = function () { return false; };
+NumberNode.prototype.valid = function () { return true; };
+NumberNode.prototype.validEnding = function () { return true; };
+
+NumberNode.prototype.canAdd = function (prev) {
+	return prev === null  || (prev instanceof BinaryOp && prev.valid());
+};
+
+function FixedNumberNode(num) {
 	this._value = num;
 }
 
-NumberNode.prototype.validEnding = function () { return true; };
-NumberNode.prototype.toNum = function () { return this._value; };
-NumberNode.prototype.screen = function () { return numToScreen(this._value); };
+FixedNumberNode.prototype = Object.create(NumberNode.prototype);
+FixedNumberNode.prototype.constructor = FixedNumberNode;
+FixedNumberNode.prototype.toNum = function () { return this._value; };
+FixedNumberNode.prototype.screen = function () { return numToScreen(this._value); };
+
+function NumberAccumulator() {
+	this._number = 0;
+	this._floatOffset = null;
+	this._negative = false;
+	this._digits = 0;
+}
+
+NumberAccumulator.prototype = Object.create(NumberNode.prototype);
+NumberAccumulator.prototype.constructor = NumberAccumulator;
+NumberAccumulator.prototype.validEnding = function () { return this.valid(); };
+
+NumberAccumulator.prototype.insertDigitDot = function () {
+	if (this._floatOffset === null) {
+		this._floatOffset = 1;
+	}
+	return true;
+};
+
+NumberAccumulator.prototype.changeDigitSign = function () {
+	this._negative = !this._negative;
+	return true;
+};
+
+NumberAccumulator.prototype.insertDigit = function (digit) {
+	if (this._digits > MAX_PRECISION) {
+		return false;
+	}
+	if (this._floatOffset === null) {
+		this._number = this._number*10 + (+digit);
+	} else {
+		this._floatOffset *= 10;
+		this._number = this._number + (+digit) / this._floatOffset;
+	}
+	if (this._number !== 0) {
+		this._digits++;
+	}
+
+	return true;
+};
+
+NumberAccumulator.prototype.screen = function () {
+	var str = this._negative ? '-' : '';
+	if (this._digits > 0) {
+		str += this._absNum().toString();
+	} else if (this._floatOffset === 1) {
+		str += '0';
+	}
+	if (this._floatOffset === 1) {
+		str += '.';
+	}
+	return numStrToScreen(str);
+};
+
+NumberAccumulator.prototype.toNum = function () {
+	var num = this._absNum();
+	if (this._negative) {
+		num = - this._number;
+	}
+	return num;
+};
+
+NumberAccumulator.prototype.valid = function () {
+	return this._digits > 0 && this._floatOffset !== 1;
+};
+
+NumberAccumulator.prototype._absNum = function () {
+	if (this._digits === 0) {
+		return 0;
+	}
+	return parseFloat(this._number.toPrecision(this._digits > 1 ? this._digits : 1));
+};
 
 var _operatorsList = {
 	'*' : new BinaryOp(10, '*', function (lhs, rhs) {return lhs*rhs;}),
@@ -95,7 +180,7 @@ function pushNode(data, list) {
 function Expression() {
 	this._list = null;
 	this._operators = {};
-	this._lastAnswer = new NumberNode(0);
+	this._lastAnswer = new FixedNumberNode(0);
 }
 
 Expression.prototype.addOperator = function (opKey) {
@@ -115,15 +200,47 @@ Expression.prototype.addOperator = function (opKey) {
 	return canAdd;
 };
 
-Expression.prototype.canAddNumber = function () {
-	var prev = this._list ? this._list.last().data() : null;
-	return prev === null  || prev instanceof BinaryOp;
+Expression.prototype.addNumber = function (num) {
+	var prev = prev ? this._list.last().data() : null;
+	var node = jQuery.isNumeric(num) ? new FixedNumberNode(num) : null;
+	if (node !== null && node.canAdd(prev)) {
+		this._list = pushNode(node, this._list);
+		return true;
+	}
+	return false;
 };
 
-Expression.prototype.addNumber = function (num) {
-	if (this.canAddNumber(this._list) && jQuery.isNumeric(num)) {
-		this._list = pushNode(new NumberNode(num) , this._list);
+Expression.prototype.insertDigitDot = function () {
+	if (this._checkCurrentNumber()) {
+		return this._list.last().data().insertDigitDot();
+	}
+	return false;
+};
+
+Expression.prototype.changeDigitSign = function () {
+	if (this._checkCurrentNumber()) {
+		return this._list.last().data().changeDigitSign();
+	}
+	return false;
+};
+
+Expression.prototype.insertDigit = function (digit) {
+	if (this._checkCurrentNumber()) {
+		return this._list.last().data().insertDigit(digit);
+	}
+	return false;
+};
+
+Expression.prototype._checkCurrentNumber = function () {
+	var prev = this._list ? this._list.last().data() : null;
+	if (prev !== null && prev instanceof NumberNode) {
 		return true;
+	} else {
+		var node = new NumberAccumulator();
+	 	if (node.canAdd(prev)) {
+			this._list = pushNode(node , this._list);
+			return true;
+		}
 	}
 	return false;
 };
@@ -162,7 +279,7 @@ Expression.prototype.clear = function () {
 		this._list = null;
 		this._operators = {};
 	} else {
-		this._lastAnswer = new NumberNode(0);
+		this._lastAnswer = new FixedNumberNode(0);
 	}
 };
 
@@ -194,74 +311,6 @@ Memory.prototype.add = function (value) { this._currentSum += value; };
 Memory.prototype.substract = function (value) { this._currentSum -= value; };
 Memory.prototype.clear = function () { this._currentSum = 0; };
 
-function NumberAccumulator() {
-	this._number = 0;
-	this._floatOffset = null;
-	this._negative = false;
-	this._digits = 0;
-}
-
-NumberAccumulator.prototype.insertDigitDot = function () {
-	if (this._floatOffset === null) {
-		this._floatOffset = 1;
-	}
-	return true;
-};
-
-NumberAccumulator.prototype.changeDigitSign = function () {
-	this._negative = !this._negative;
-	return true;
-};
-
-NumberAccumulator.prototype.insertDigit = function (digit) {
-	if (this._digits > MAX_PRECISION) {
-		return false;
-	}
-	if (this._floatOffset === null) {
-		this._number = this._number*10 + (+digit);
-	} else {
-		this._floatOffset *= 10;
-		this._number = this._number + (+digit) / this._floatOffset;
-	}
-	if (this._number !== 0) {
-		this._digits++;
-	}
-
-	return true;
-};
-
-NumberAccumulator.prototype.toString = function () {
-	var str = this._negative ? '-' : '';
-	if (this._digits > 0) {
-		str += this._absNum().toString();
-	} else if (this._floatOffset === 1) {
-		str += '0';
-	}
-	if (this._floatOffset === 1) {
-		str += '.';
-	}
-	return str;
-};
-
-NumberAccumulator.prototype.toNum = function () {
-	var num = this._absNum();
-	if (this._negative) {
-		num = - this._number;
-	}
-	return num;
-};
-
-NumberAccumulator.prototype._absNum = function () {
-	if (this._digits === 0) {
-		return 0;
-	}
-	return  parseFloat(this._number.toPrecision(this._digits > 1 ? this._digits : 1));
-};
-
-NumberAccumulator.prototype.valid = function () {
-	return this._digits > 0 && this._floatOffset !== 1;
-};
-
 function OffCalcHandler() {}
 
 OffCalcHandler.prototype.addOp = function () {};
@@ -282,35 +331,17 @@ OffCalcHandler.prototype.getDisplay = function () { return ''; };
 function CalcHandler() {
 	this._expr = new Expression();
 	this._memory = new Memory();
-	this._numberAccumulator = null;
 }
 
 CalcHandler.prototype.addOp = function(op) {
-	return this._operate(this._expr.addOperator.bind(this._expr, op));
+	return this._expr.addOperator(op);
 };
 
 CalcHandler.prototype.sqrt = function () {
-	if (this._numberAccumulator !== null && !this._numberAccumulator.valid()) {
-		return false;
-	}
-	var addedNumber = false;
-	if (this._numberAccumulator !== null) {
-		addedNumber = this._expr.addNumber(this._numberAccumulator.toNum());
-	}
-
-	var addedSqrt = this._expr.addOperator("SQRT");
-	var calculated = false;
-	if (addedSqrt) {
-		calculated = this._expr.run();
-	}
-	if (calculated) {
-		this._numberAccumulator = null;
-		return true;
-	} else {
-		if (addedSqrt) {
-			this._expr.pop();
-		}
-		if (addedNumber) {
+	if (this._expr.addOperator("SQRT")) {
+		if(this._expr.run()){
+			return true;
+		} else {
 			this._expr.pop();
 		}
 	}
@@ -318,43 +349,33 @@ CalcHandler.prototype.sqrt = function () {
 };
 
 CalcHandler.prototype.calculate = function () {
-	return this._operate(this._expr.run.bind(this._expr));
+	return this._expr.run();
 };
 
 CalcHandler.prototype.insertDigitDot = function () {
-	if (this._checkCurrentNumber()) {
-		return this._numberAccumulator.insertDigitDot();
-	}
-	return false;
+	return this._expr.insertDigitDot();
 };
 
 CalcHandler.prototype.changeDigitSign = function () {
-	if (this._checkCurrentNumber()) {
-		return this._numberAccumulator.changeDigitSign();
-	}
-	return false;
+	return this._expr.changeDigitSign();
 };
 
 CalcHandler.prototype.insertDigit = function (digit) {
-	if (this._checkCurrentNumber()) {
-		return this._numberAccumulator.insertDigit(digit);
-	}
-	return false;
+	return this._expr.insertDigit(digit);
 };
 
-CalcHandler.prototype.onOff = function () { _calcHandler = _offCalcHandler; };
+CalcHandler.prototype.onOff = function () {
+	_calcHandler = _offCalcHandler;
+	return true;
+};
+
 CalcHandler.prototype.onOn = function () {
-	if (this._numberAccumulator !== null) {
-		this._numberAccumulator = null;
-	} else {
-		this._expr.pop();
-	}
+	this._expr.pop();
 	return true;
 };
 
 CalcHandler.prototype.clearAll = function () {
 	this._expr.clear();
-	this._numberAccumulator = null;
 	return true;
 };
 
@@ -380,38 +401,10 @@ CalcHandler.prototype.memorySubstract = function () {
 
 CalcHandler.prototype.getDisplay = function() {
 	var text = this._expr.screenText();
-	if (this._numberAccumulator !== null) {
-		text += numStrToScreen(this._numberAccumulator.toString());
-	}
 	if (text === '' && this._expr.lastAnswer() !== null){
 		text = numToScreen(this._expr.lastAnswer());
 	}
 	return text;
-};
-
-CalcHandler.prototype._checkCurrentNumber = function () {
-	if (this._numberAccumulator === null && this._expr.canAddNumber()) {
-		this._numberAccumulator = new NumberAccumulator();
-	}
-	return this._numberAccumulator !== null;
-};
-
-CalcHandler.prototype._operate = function (callback) {
-	var addedNumber = false;
-	if (this._numberAccumulator !== null) {
-		if (this._numberAccumulator.valid()) {
-			this._expr.addNumber(this._numberAccumulator.toNum());
-		} else {
-			return false;
-		}
-	}
-	if(callback()){
-		this._numberAccumulator = null;
-		return true;
-	} else if (addedNumber){
-		this._expr.pop();
-	}
-	return false;
 };
 
 var _cButtons = {
