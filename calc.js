@@ -323,24 +323,21 @@ CalcHandler.prototype.calculate = function () {
 
 CalcHandler.prototype.insertDigitDot = function () {
 	if (this._checkCurrentNumber()) {
-		this._numberAccumulator.insertDigitDot();
-		return true;
+		return this._numberAccumulator.insertDigitDot();
 	}
 	return false;
 };
 
 CalcHandler.prototype.changeDigitSign = function () {
 	if (this._checkCurrentNumber()) {
-		this._numberAccumulator.changeDigitSign();
-		return true;
+		return this._numberAccumulator.changeDigitSign();
 	}
 	return false;
 };
 
 CalcHandler.prototype.insertDigit = function (digit) {
 	if (this._checkCurrentNumber()) {
-		this._numberAccumulator.insertDigit(digit);
-		return true;
+		return this._numberAccumulator.insertDigit(digit);
 	}
 	return false;
 };
