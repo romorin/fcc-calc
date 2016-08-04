@@ -313,18 +313,18 @@ Memory.prototype.clear = function () { this._currentSum = 0; };
 
 function OffCalcHandler() {}
 
-OffCalcHandler.prototype.addOp = function () {};
-OffCalcHandler.prototype.calculate = function () {};
-OffCalcHandler.prototype.sqrt = function () {};
-OffCalcHandler.prototype.insertDigitDot = function () {};
-OffCalcHandler.prototype.changeDigitSign = function () {};
-OffCalcHandler.prototype.insertDigit = function () {};
-OffCalcHandler.prototype.onOff = function () {};
-OffCalcHandler.prototype.clearAll = function () {};
-OffCalcHandler.prototype.memoryRecall = function () {};
-OffCalcHandler.prototype.memoryClear = function () {};
-OffCalcHandler.prototype.memoryAdd = function () {};
-OffCalcHandler.prototype.memorySubstract = function () {};
+OffCalcHandler.prototype.addOp =
+OffCalcHandler.prototype.calculate =
+OffCalcHandler.prototype.sqrt =
+OffCalcHandler.prototype.insertDigitDot =
+OffCalcHandler.prototype.changeDigitSign =
+OffCalcHandler.prototype.insertDigit =
+OffCalcHandler.prototype.onOff =
+OffCalcHandler.prototype.clearAll =
+OffCalcHandler.prototype.memoryRecall =
+OffCalcHandler.prototype.memoryClear =
+OffCalcHandler.prototype.memoryAdd =
+OffCalcHandler.prototype.memorySubstract = function () { return true; };
 OffCalcHandler.prototype.onOn = function () { _calcHandler = _onCalcHandler; };
 OffCalcHandler.prototype.getDisplay = function () { return ''; };
 
