@@ -211,29 +211,29 @@ Expression.prototype.addNumber = function (num) {
 };
 
 Expression.prototype.insertDigitDot = function () {
-	if (this._checkCurrentNumber()) {
+	if (this._checkNumberAccumulator()) {
 		return this._list.last().data().insertDigitDot();
 	}
 	return false;
 };
 
 Expression.prototype.changeDigitSign = function () {
-	if (this._checkCurrentNumber()) {
+	if (this._checkNumberAccumulator()) {
 		return this._list.last().data().changeDigitSign();
 	}
 	return false;
 };
 
 Expression.prototype.insertDigit = function (digit) {
-	if (this._checkCurrentNumber()) {
+	if (this._checkNumberAccumulator()) {
 		return this._list.last().data().insertDigit(digit);
 	}
 	return false;
 };
 
-Expression.prototype._checkCurrentNumber = function () {
+Expression.prototype._checkNumberAccumulator = function () {
 	var prev = this._list ? this._list.last().data() : null;
-	if (prev !== null && prev instanceof NumberNode) {
+	if (prev !== null && prev instanceof NumberAccumulator) {
 		return true;
 	} else {
 		var node = new NumberAccumulator();
@@ -284,19 +284,24 @@ Expression.prototype.clear = function () {
 };
 
 Expression.prototype.pop = function () {
-	var last = this._list.last();
-	if (this._list.first() === last) {
-		this.clear();
-	} else {
-		if (last.data() instanceof Op) {
-			var opRow = this._operators[last.data().priority()];
-			if (opRow.first() === opRow.last()) {
-				delete this._operators[last.data().priority()];
-			} else {
-				opRow.last().remove();
+	if (this._list !== null) {
+		var last = this._list.last();
+		if (this._list.first() === last) {
+			this.clear();
+		} else {
+			if (last.data() instanceof Op) {
+				var opRow = this._operators[last.data().priority()];
+				if (opRow.first() === opRow.last()) {
+					delete this._operators[last.data().priority()];
+				} else {
+					opRow.last().remove();
+				}
 			}
+			last.remove();
 		}
-		last.remove();
+	}
+	if (this._list === null) {
+		this._lastAnswer = new FixedNumberNode(0);
 	}
 };
 
