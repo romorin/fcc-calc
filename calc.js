@@ -503,7 +503,8 @@ var _cButtons = {
 };
 
 function updateScreen() {
-	jQuery('#cscreen').html(_calcHandler.getDisplay());
+	var elem = jQuery('#cscreen');
+	elem.html(_calcHandler.getDisplay()).scrollTop( elem.prop('scrollHeight') );
 }
 
 function onError() {
