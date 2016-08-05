@@ -41,7 +41,7 @@ BinaryOp.prototype.reduce = function (node) {
 
 	var result = this._run(lhs.data().toNum(), rhs.data().toNum());
 
-	lhs.insertBefore(new FixedNumberNode(result));
+	lhs.insertBefore(buildNumberNode(result));
 	lhs.remove();
 	node.remove();
 	rhs.remove();
@@ -61,10 +61,19 @@ PostOp.prototype.reduce = function (node) {
 
 	var result = this._run(valueNode.data().toNum());
 
-	valueNode.insertBefore(new FixedNumberNode(result));
+	valueNode.insertBefore(buildNumberNode(result));
 	valueNode.remove();
 	node.remove();
 };
+
+function buildNumberNode(value) {
+	var valueStr = value.toString();
+	if (validForNumberAccumulator(value)) {
+		return new NumberAccumulator(value);
+	} else {
+		return new FixedNumberNode(value);
+	}
+}
 
 function NumberNode() {}
 NumberNode.prototype.insertDigitDot = function () { return false; };
@@ -86,11 +95,25 @@ FixedNumberNode.prototype.constructor = FixedNumberNode;
 FixedNumberNode.prototype.toNum = function () { return this._value; };
 FixedNumberNode.prototype.screen = function () { return numToScreen(this._value); };
 
-function NumberAccumulator() {
-	this._number = 0;
-	this._floatOffset = null;
-	this._negative = false;
-	this._digits = 0;
+function validForNumberAccumulator(value) {
+	return -1000000000000000 <= value || value <= 1000000000000000 || valueStr.indexOf('e') !== -1;
+}
+
+function NumberAccumulator(value) {
+	if ((value || value === 0) && validForNumberAccumulator(value)) {
+		var valueStr = value.toString();
+		var dotPos = valueStr.indexOf('.');
+
+		this._number = Math.abs(value);
+		this._floatOffset = dotPos === -1 ? null : Math.pow(10, valueStr.length - 1 - dotPos);
+		this._negative = value < 0;
+		this._digits = valueStr.length - (dotPos === -1 ? 0 : 1);
+	} else {
+		this._number = 0;
+		this._floatOffset = null;
+		this._negative = false;
+		this._digits = 0;
+	}
 }
 
 NumberAccumulator.prototype = Object.create(NumberNode.prototype);
@@ -180,7 +203,7 @@ function pushNode(data, list) {
 function Expression() {
 	this._list = null;
 	this._operators = {};
-	this._lastAnswer = new FixedNumberNode(0);
+	this._lastAnswer = buildNumberNode(0);
 }
 
 Expression.prototype.addOperator = function (opKey) {
@@ -202,7 +225,7 @@ Expression.prototype.addOperator = function (opKey) {
 
 Expression.prototype.addNumber = function (num) {
 	var prev = prev ? this._list.last().data() : null;
-	var node = jQuery.isNumeric(num) ? new FixedNumberNode(num) : null;
+	var node = jQuery.isNumeric(num) ? buildNumberNode(num) : null;
 	if (node !== null && node.canAdd(prev)) {
 		this._list = pushNode(node, this._list);
 		return true;
@@ -246,6 +269,9 @@ Expression.prototype._checkNumberAccumulator = function () {
 };
 
 Expression.prototype.run = function () {
+	if (this._list === null) {
+		return true;
+	}
 	if (!this._list.last().data().validEnding()) {
 		return false;
 	}
@@ -279,7 +305,7 @@ Expression.prototype.clear = function () {
 		this._list = null;
 		this._operators = {};
 	} else {
-		this._lastAnswer = new FixedNumberNode(0);
+		this._lastAnswer = buildNumberNode(0);
 	}
 };
 
@@ -301,7 +327,7 @@ Expression.prototype.pop = function () {
 		}
 	}
 	if (this._list === null) {
-		this._lastAnswer = new FixedNumberNode(0);
+		this._lastAnswer = buildNumberNode(0);
 	}
 };
 
