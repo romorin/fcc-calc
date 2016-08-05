@@ -5,11 +5,39 @@ var NEGATIVE_CHAR = '¯';
 var FLOAT_CHAR = ',';
 var MAX_PRECISION = 15;
 
+var TOO_MANY_MESSAGES = "Digits limit met";
+var MISPLACED_OPERATOR = "Misplaced operator";
+var TOO_MANY_DOTS = "Invalid Number";
+
 function numStrToScreen(numStr) {
 	return numStr.replace('-' ,NEGATIVE_CHAR).replace('.', FLOAT_CHAR);
 }
 function numToScreen(num) {
 	return numStrToScreen((num.toPrecision(MAX_PRECISION)/1).toString());
+}
+
+/* src : http://stackoverflow.com/questions/464359/custom-exceptions-in-javascript */
+function CalcErrorException(message) {
+    this.message = message;
+    // Use V8's native method if available, otherwise fallback
+    if ("captureStackTrace" in Error)
+        Error.captureStackTrace(this, CalcErrorException);
+    else
+        this.stack = (new Error()).stack;
+}
+
+CalcErrorException.prototype = Object.create(Error.prototype);
+CalcErrorException.prototype.name = "CalcErrorException";
+CalcErrorException.prototype.constructor = CalcErrorException;
+
+function getTooManyDigitsException() {
+	return new CalcErrorException(TOO_MANY_MESSAGES);
+}
+function getMisplacedOperatorException() {
+	return new CalcErrorException(MISPLACED_OPERATOR);
+}
+function getTooManyDotsException() {
+	return new CalcErrorException(TOO_MANY_DOTS);
 }
 
 function Op(priority, screen, run) {
@@ -123,8 +151,10 @@ NumberAccumulator.prototype.validEnding = function () { return this.valid(); };
 NumberAccumulator.prototype.insertDigitDot = function () {
 	if (this._floatOffset === null) {
 		this._floatOffset = 1;
+		return true;
+	} else {
+		throw getTooManyDotsException();
 	}
-	return true;
 };
 
 NumberAccumulator.prototype.changeDigitSign = function () {
@@ -134,7 +164,7 @@ NumberAccumulator.prototype.changeDigitSign = function () {
 
 NumberAccumulator.prototype.insertDigit = function (digit) {
 	if (this._digits >= MAX_PRECISION) {
-		return false;
+		throw getTooManyDigitsException();
 	}
 	if (this._floatOffset === null) {
 		this._number = this._number*10 + (+digit);
@@ -219,6 +249,8 @@ Expression.prototype.addOperator = function (opKey) {
 	if (canAdd) {
 		this._list = pushNode(op , this._list);
 		this._operators[op.priority()] = pushNode(this._list.last(), this._operators[op.priority()]);
+	} else {
+		throw getMisplacedOperatorException();
 	}
 	return canAdd;
 };
@@ -356,7 +388,10 @@ OffCalcHandler.prototype.memoryRecall =
 OffCalcHandler.prototype.memoryClear =
 OffCalcHandler.prototype.memoryAdd =
 OffCalcHandler.prototype.memorySubstract = function () { return true; };
-OffCalcHandler.prototype.onOn = function () { _calcHandler = _onCalcHandler; };
+OffCalcHandler.prototype.onOn = function () {
+	_calcHandler = _onCalcHandler;
+	return true;
+};
 OffCalcHandler.prototype.getDisplay = function () { return ''; };
 
 function CalcHandler() {
@@ -483,10 +518,20 @@ function onError() {
 
 function onBtnClick(id) {
 	if (id in _cButtons) {
-		if(!_cButtons[id]()) {
-			onError();
+		try {
+			if(!_cButtons[id]()) {
+				onError();
+			}
+			updateScreen();
+		} catch (e) {
+			if (e instanceof CalcErrorException) {
+				jQuery('#cscreen').html(e.message);
+				onError();
+				window.setTimeout(updateScreen, 3000);
+			} else {
+				throw e;
+			}
 		}
-		updateScreen();
 	}
 }
 
