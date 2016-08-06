@@ -93,11 +93,11 @@ BinaryOp.prototype.canAdd = function (prev) {
 };
 
 // Compute the result of the operator applied to the previous and next values in the list
-BinaryOp.prototype.reduce = function (node) {
+BinaryOp.prototype.reduce = function (node, extra) {
 	var lhs = node.prev();
 	var rhs = node.next();
 
-	var result = this._run(lhs.data().toNum(), rhs.data().toNum());
+	var result = this._run(lhs.data().toNum(), rhs.data().toNum(), extra);
 
 	lhs.insertBefore(buildNumberNode(result));
 	lhs.remove();
@@ -123,10 +123,11 @@ PostOp.prototype.canAdd = function (prev) { return prev instanceof NumberNode &&
 PostOp.prototype.validEnding = function () { return true; };
 
 // Compute the result of the operator applied to the previous value in the list
-PostOp.prototype.reduce = function (node) {
+// Extra contains extra parameters from the expression to the callback. Could be better?
+PostOp.prototype.reduce = function (node, extra) {
 	var valueNode = node.prev();
 
-	var result = this._run(valueNode.data().toNum());
+	var result = this._run(valueNode.data().toNum(), extra);
 
 	valueNode.insertBefore(buildNumberNode(result));
 	valueNode.remove();
@@ -296,9 +297,11 @@ NumberAccumulator.prototype._absNum = function () {
 
 // store the available operators available in the expression
 var _operatorsList = {
+	'%' : new PostOp(5, '%', function (value, extra) {
+		return extra.lastAnswer * value / 100;
+	}),
 	'*' : new BinaryOp(10, '*', function (lhs, rhs) {return lhs*rhs;}),
 	'/' : new BinaryOp(10, '/', function (lhs, rhs) {return lhs/rhs;}),
-	'%' : new BinaryOp(10, '%', function (lhs, rhs) {return lhs%rhs;}),
 	'+' : new BinaryOp(20, '+', function (lhs, rhs) {return lhs+rhs;}),
 	'-' : new BinaryOp(20, '-', function (lhs, rhs) {return lhs-rhs;}),
 	// the calculator considers sqrt like calculate everything then do it, so hacking like
@@ -410,9 +413,10 @@ Expression.prototype.run = function () {
 	}
 
 	// apply the operators by order of priority
+	var lastAnswer = this.lastAnswer();
 	Object.keys(this._operators).forEach(function (key) {
 		this._operators[key].forEach(function (opNode) {
-			opNode.data().data().reduce(opNode.data());
+			opNode.data().data().reduce(opNode.data(), {lastAnswer: lastAnswer});
 			opNode.remove();
 		});
 		delete this._operators[key];
