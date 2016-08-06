@@ -1,3 +1,7 @@
+
+
+/* Constants */
+
 var CALC_RATIO = 0.898;
 var CALC_BORDER_SIZE = 0;
 
@@ -9,6 +13,9 @@ var TOO_MANY_MESSAGES = "Digits limit met";
 var MISPLACED_OPERATOR = "Misplaced operator";
 var TOO_MANY_DOTS = "Invalid Number";
 
+/*
+	Formatting functions
+*/
 function numStrToScreen(numStr) {
 	return numStr.replace('-' ,NEGATIVE_CHAR).replace('.', FLOAT_CHAR);
 }
@@ -16,7 +23,11 @@ function numToScreen(num) {
 	return numStrToScreen((num.toPrecision(MAX_PRECISION)/1).toString());
 }
 
-/* src : http://stackoverflow.com/questions/464359/custom-exceptions-in-javascript */
+/*
+	Base exception class used by the calculator
+
+	src : http://stackoverflow.com/questions/464359/custom-exceptions-in-javascript
+*/
 function CalcErrorException(message) {
     this.message = message;
     // Use V8's native method if available, otherwise fallback
@@ -30,6 +41,9 @@ CalcErrorException.prototype = Object.create(Error.prototype);
 CalcErrorException.prototype.name = "CalcErrorException";
 CalcErrorException.prototype.constructor = CalcErrorException;
 
+/*
+	Specific exceptions
+*/
 function getTooManyDigitsException() {
 	return new CalcErrorException(TOO_MANY_MESSAGES);
 }
@@ -40,29 +54,45 @@ function getTooManyDotsException() {
 	return new CalcErrorException(TOO_MANY_DOTS);
 }
 
+/*
+	Base operator class used by the calculator expression manager :
+	Represents an operation in the expression
+*/
 function Op(priority, screen, run) {
 	this._priority = priority;
 	this._screen = screen;
 	this._run = run;
 }
 
+// The priority of the operator; lowest number will be computed sooner
 Op.prototype.priority = function () { return this._priority; };
+
+// How the operator should be represented on screen
 Op.prototype.screen = function () { return this._screen; };
+
+// Wether the operator is in a valid state and new nodes can be added
 Op.prototype.valid = function () { return true; };
 
+/*
+	Operator child class representing an operation with two values
+*/
 function BinaryOp(priority, screen, run) {
 	Op.call(this, priority, screen, run);
 }
 
+// Glue
 BinaryOp.prototype = Object.create(Op.prototype);
 BinaryOp.prototype.constructor = BinaryOp;
 
+// If an expression can be ended by it
 BinaryOp.prototype.validEnding = function () { return false; };
 
+// Returns wether the operator can be added after the specified node
 BinaryOp.prototype.canAdd = function (prev) {
 	return (prev instanceof NumberNode || prev instanceof PostOp) && prev.valid();
 };
 
+// Compute the result of the operator applied to the previous and next values in the list
 BinaryOp.prototype.reduce = function (node) {
 	var lhs = node.prev();
 	var rhs = node.next();
@@ -75,15 +105,24 @@ BinaryOp.prototype.reduce = function (node) {
 	rhs.remove();
 };
 
+/*
+	Operator child class representing an unary operation applied to the value before
+*/
 function PostOp(priority, screen, run) {
 	Op.call(this, priority, screen, run);
 }
+
+// Glue
 PostOp.prototype = Object.create(Op.prototype);
 PostOp.prototype.constructor = PostOp;
 
+// Returns wether the operator can be added after the specified node
 PostOp.prototype.canAdd = function (prev) { return prev instanceof NumberNode && prev.valid(); };
+
+// If an expression can be ended by it
 PostOp.prototype.validEnding = function () { return true; };
 
+// Compute the result of the operator applied to the previous value in the list
 PostOp.prototype.reduce = function (node) {
 	var valueNode = node.prev();
 
@@ -94,6 +133,7 @@ PostOp.prototype.reduce = function (node) {
 	node.remove();
 };
 
+// Number node factory returning a NumberAccumulator whenever possible
 function buildNumberNode(value) {
 	var valueStr = value.toString();
 	if (validForNumberAccumulator(value)) {
@@ -103,38 +143,66 @@ function buildNumberNode(value) {
 	}
 }
 
-function NumberNode() {}
-NumberNode.prototype.insertDigitDot = function () { return false; };
-NumberNode.prototype.changeDigitSign  = function () { return false; };
-NumberNode.prototype.insertDigit = function () { return false; };
-NumberNode.prototype.valid = function () { return true; };
-NumberNode.prototype.validEnding = function () { return true; };
-
-NumberNode.prototype.canAdd = function (prev) {
-	return prev === null  || (prev instanceof BinaryOp && prev.valid());
-};
-
-function FixedNumberNode(num) {
-	this._value = num;
-}
-
-FixedNumberNode.prototype = Object.create(NumberNode.prototype);
-FixedNumberNode.prototype.constructor = FixedNumberNode;
-FixedNumberNode.prototype.toNum = function () { return this._value; };
-FixedNumberNode.prototype.screen = function () { return numToScreen(this._value); };
-
+// NumberAccumulator can only accept values that can be represented exactly
 function validForNumberAccumulator(value) {
 	return -1000000000000000 <= value || value <= 1000000000000000 || valueStr.indexOf('e') !== -1;
 }
 
+/*
+	Base value class used by the calculator expression manager :
+	Represents a value in the expression
+*/
+function NumberNode() {}
+
+// Value modification functions
+NumberNode.prototype.insertDigitDot = function () { return false; };
+NumberNode.prototype.changeDigitSign  = function () { return false; };
+NumberNode.prototype.insertDigit = function () { return false; };
+
+// Wether the node is in a valid state and new ones can be added
+NumberNode.prototype.valid = function () { return true; };
+
+// If an expression can be ended by it
+NumberNode.prototype.validEnding = function () { return true; };
+
+// Returns wether the value can be added after the specified node
+NumberNode.prototype.canAdd = function (prev) {
+	return prev === null  || (prev instanceof BinaryOp && prev.valid());
+};
+
+/*
+	Value child class which cannot be modified
+*/
+function FixedNumberNode(num) {
+	this._value = num;
+}
+
+// glue
+FixedNumberNode.prototype = Object.create(NumberNode.prototype);
+FixedNumberNode.prototype.constructor = FixedNumberNode;
+
+// get the value in number form
+FixedNumberNode.prototype.toNum = function () { return this._value; };
+
+// get the screen representation of the number
+FixedNumberNode.prototype.screen = function () { return numToScreen(this._value); };
+
+/*
+	Value child class that can be modified
+	If the specified value cannot represented, it returns an empty value
+*/
 function NumberAccumulator(value) {
 	if ((value || value === 0) && validForNumberAccumulator(value)) {
 		var valueStr = value.toString();
 		var dotPos = valueStr.indexOf('.');
 
+		// the number is stored in absolute form
 		this._number = Math.abs(value);
+		// compute the offset from the dot position in the string
 		this._floatOffset = dotPos === -1 ? null : Math.pow(10, valueStr.length - 1 - dotPos);
+		// the sign is simple to get
 		this._negative = value < 0;
+		// count the string chars less the dot char to get the number of digits
 		this._digits = valueStr.length - (dotPos === -1 ? 0 : 1);
 	} else {
 		this._number = 0;
@@ -144,10 +212,14 @@ function NumberAccumulator(value) {
 	}
 }
 
+// glue
 NumberAccumulator.prototype = Object.create(NumberNode.prototype);
 NumberAccumulator.prototype.constructor = NumberAccumulator;
+
+// If an expression can be ended by it
 NumberAccumulator.prototype.validEnding = function () { return this.valid(); };
 
+// push a dot on the number, if there is not already one
 NumberAccumulator.prototype.insertDigitDot = function () {
 	if (this._floatOffset === null) {
 		this._floatOffset = 1;
@@ -157,21 +229,28 @@ NumberAccumulator.prototype.insertDigitDot = function () {
 	}
 };
 
+// change the sign of the number
 NumberAccumulator.prototype.changeDigitSign = function () {
 	this._negative = !this._negative;
 	return true;
 };
 
+// push a digit on the accumulator
 NumberAccumulator.prototype.insertDigit = function (digit) {
+	// the number must be under the js number precision
 	if (this._digits >= MAX_PRECISION) {
 		throw getTooManyDigitsException();
 	}
+	// shift the value if it is an integer
 	if (this._floatOffset === null) {
 		this._number = this._number*10 + (+digit);
+
+	// divide the new digit by the offset if it is a float
 	} else {
 		this._floatOffset *= 10;
 		this._number = this._number + (+digit) / this._floatOffset;
 	}
+	// the digits counts only start with the first non zero digit
 	if (this._number !== 0) {
 		this._digits++;
 	}
@@ -179,6 +258,7 @@ NumberAccumulator.prototype.insertDigit = function (digit) {
 	return true;
 };
 
+// get the screen representation of the number
 NumberAccumulator.prototype.screen = function () {
 	var str = this._negative ? '-' : '';
 	if (this._digits > 0) {
@@ -192,6 +272,7 @@ NumberAccumulator.prototype.screen = function () {
 	return numStrToScreen(str);
 };
 
+// get the number representation of the value
 NumberAccumulator.prototype.toNum = function () {
 	var num = this._absNum();
 	if (this._negative) {
@@ -200,10 +281,12 @@ NumberAccumulator.prototype.toNum = function () {
 	return num;
 };
 
+// wether the accumulator is in a valid state
 NumberAccumulator.prototype.valid = function () {
 	return this._digits > 0 && this._floatOffset !== 1;
 };
 
+// private method to get the absolute number from the accumulator
 NumberAccumulator.prototype._absNum = function () {
 	if (this._digits === 0) {
 		return 0;
@@ -211,6 +294,7 @@ NumberAccumulator.prototype._absNum = function () {
 	return parseFloat(this._number.toPrecision(this._digits > 1 ? this._digits : 1));
 };
 
+// store the available operators available in the expression
 var _operatorsList = {
 	'*' : new BinaryOp(10, '*', function (lhs, rhs) {return lhs*rhs;}),
 	'/' : new BinaryOp(10, '/', function (lhs, rhs) {return lhs/rhs;}),
@@ -222,6 +306,7 @@ var _operatorsList = {
 	'SQRT' : new PostOp(30, 'SQRT', function (value) {return  Math.sqrt(value);})
 };
 
+// add a new node in the list if existing, else create a new list
 function pushNode(data, list) {
 	if (list) {
 		return list.last().insertAfter(data).getList();
@@ -230,23 +315,32 @@ function pushNode(data, list) {
 	}
 }
 
+/*
+	Represents the expression of the calculator, composed of operator and value nodes
+	Also maintains a map of operators referenced by the priority of the operations
+*/
 function Expression() {
 	this._list = null;
 	this._operators = {};
 	this._lastAnswer = buildNumberNode(0);
 }
 
+// Add a new operator in the expression
 Expression.prototype.addOperator = function (opKey) {
 	var op = _operatorsList[opKey];
 	var prev = this._list ? this._list.last().data() : null;
 
+	// check wether we can add the new operator in the expression
 	var canAdd = op && op.canAdd(prev);
+
+	// a special case if the list is empty -> we use the last answer
 	if (!canAdd && this._list === null && op.canAdd(this._lastAnswer)) {
 		this._list = pushNode(this._lastAnswer , this._list);
 		canAdd = true;
 	}
 
 	if (canAdd) {
+		// add the operator in the list, and in the operator list
 		this._list = pushNode(op , this._list);
 		this._operators[op.priority()] = pushNode(this._list.last(), this._operators[op.priority()]);
 	} else {
@@ -255,6 +349,7 @@ Expression.prototype.addOperator = function (opKey) {
 	return canAdd;
 };
 
+// Add a number in the expression
 Expression.prototype.addNumber = function (num) {
 	var prev = prev ? this._list.last().data() : null;
 	var node = jQuery.isNumeric(num) ? buildNumberNode(num) : null;
@@ -265,6 +360,7 @@ Expression.prototype.addNumber = function (num) {
 	return false;
 };
 
+// Modify the current number
 Expression.prototype.insertDigitDot = function () {
 	if (this._checkNumberAccumulator()) {
 		return this._list.last().data().insertDigitDot();
@@ -272,6 +368,7 @@ Expression.prototype.insertDigitDot = function () {
 	return false;
 };
 
+// Modify the current number
 Expression.prototype.changeDigitSign = function () {
 	if (this._checkNumberAccumulator()) {
 		return this._list.last().data().changeDigitSign();
@@ -279,6 +376,7 @@ Expression.prototype.changeDigitSign = function () {
 	return false;
 };
 
+// Modify the current number
 Expression.prototype.insertDigit = function (digit) {
 	if (this._checkNumberAccumulator()) {
 		return this._list.last().data().insertDigit(digit);
@@ -286,6 +384,7 @@ Expression.prototype.insertDigit = function (digit) {
 	return false;
 };
 
+// Internal method to make sure the current node is a number accumulator, else try to add it
 Expression.prototype._checkNumberAccumulator = function () {
 	var prev = this._list ? this._list.last().data() : null;
 	if (prev !== null && prev instanceof NumberAccumulator) {
@@ -300,7 +399,9 @@ Expression.prototype._checkNumberAccumulator = function () {
 	return false;
 };
 
+// Reduce the expression to get an answer
 Expression.prototype.run = function () {
+	// make sure the expression is valid before running
 	if (this._list === null) {
 		return true;
 	}
@@ -308,6 +409,7 @@ Expression.prototype.run = function () {
 		return false;
 	}
 
+	// apply the operators by order of priority
 	Object.keys(this._operators).forEach(function (key) {
 		this._operators[key].forEach(function (opNode) {
 			opNode.data().data().reduce(opNode.data());
@@ -316,12 +418,14 @@ Expression.prototype.run = function () {
 		delete this._operators[key];
 	}, this);
 
+	// get the answer
 	this._lastAnswer = this._list.last().data();
 	this._list = null;
 
 	return true;
 };
 
+// get the screen representation of the expression by asking the nodes
 Expression.prototype.screenText = function () {
 	var text = '';
 	if (this._list !== null) {
@@ -332,6 +436,7 @@ Expression.prototype.screenText = function () {
 	return text;
 };
 
+// flush everything
 Expression.prototype.clear = function () {
 	if (this._list !== null) {
 		this._list = null;
@@ -341,12 +446,15 @@ Expression.prototype.clear = function () {
 	}
 };
 
+// pop the most current node of the expression
 Expression.prototype.pop = function () {
 	if (this._list !== null) {
 		var last = this._list.last();
+		// delete the list if there is only one node
 		if (this._list.first() === last) {
 			this.clear();
 		} else {
+			// remove the operator from the op map
 			if (last.data() instanceof Op) {
 				var opRow = this._operators[last.data().priority()];
 				if (opRow.first() === opRow.last()) {
@@ -355,25 +463,35 @@ Expression.prototype.pop = function () {
 					opRow.last().remove();
 				}
 			}
+			// remove the node
 			last.remove();
 		}
 	}
+	// pop the answer if there is no list
 	if (this._list === null) {
 		this._lastAnswer = buildNumberNode(0);
 	}
 };
 
+// get the last computed answer
 Expression.prototype.lastAnswer = function () { return this._lastAnswer.toNum(); };
 
+/*
+	Simple memory for the calculator
+*/
 function Memory() {
 	this._currentSum = 0;
 }
 
+// memory operations
 Memory.prototype.get = function () { return this._currentSum; };
 Memory.prototype.add = function (value) { this._currentSum += value; };
 Memory.prototype.substract = function (value) { this._currentSum -= value; };
 Memory.prototype.clear = function () { this._currentSum = 0; };
 
+/*
+	Dummy calc controller in the off state
+*/
 function OffCalcHandler() {}
 
 OffCalcHandler.prototype.addOp =
@@ -394,6 +512,9 @@ OffCalcHandler.prototype.onOn = function () {
 };
 OffCalcHandler.prototype.getDisplay = function () { return ''; };
 
+/*
+	Calc controller for the on state
+*/
 function CalcHandler() {
 	this._expr = new Expression();
 	this._memory = new Memory();
@@ -473,6 +594,7 @@ CalcHandler.prototype.getDisplay = function() {
 	return text;
 };
 
+// links the buttons with the controller
 var _cButtons = {
 	c0 : function() { return _calcHandler.insertDigit('0');},
 	c1 : function() { return _calcHandler.insertDigit('1');},
@@ -507,6 +629,7 @@ function updateScreen() {
 	elem.html(_calcHandler.getDisplay()).scrollTop( elem.prop('scrollHeight') );
 }
 
+// flashes the indicator light
 function onError() {
 	jQuery("#cspec").animate({
 			opacity: 0.5
@@ -517,6 +640,7 @@ function onError() {
 	});
 }
 
+// called when a button is clicked
 function onBtnClick(id) {
 	if (id in _cButtons) {
 		try {

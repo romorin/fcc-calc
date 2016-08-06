@@ -1,4 +1,10 @@
+/*
+	My own linked implementation, where operations are controlled by the node
+*/
 
+/*
+	Constant representation of the list
+*/
 function LList (node) {
 	this._first = node;
 	this._last = node;
@@ -11,13 +17,17 @@ function LList (node) {
 	}
 }
 LList.prototype = {
+	// get the first element in the list
 	first : function () {
 		return this._first;
 	},
+
+	// get the last element in the list
 	last : function () {
 		return this._last;
 	},
 
+	// apply a callback on every nodes in the list
 	forEach : function (callback) {
 		var current = this._first;
 		while (current !== this._last) {
@@ -29,6 +39,9 @@ LList.prototype = {
 	}
 };
 
+/*
+	The nodes of the linked list
+*/
 function Node (data) {
 	this._data = data;
 	this._prev = null;
@@ -36,6 +49,7 @@ function Node (data) {
 	this._bounds = new LList(this);
 }
 Node.prototype = {
+	// insert a new node after this one
 	insertAfter : function (data) {
 		var newNode = new Node(data);
 
@@ -53,6 +67,7 @@ Node.prototype = {
 		return newNode;
 	},
 
+	// insert a new node before this one
 	insertBefore : function (data) {
 		var newNode = new Node(data);
 
@@ -70,6 +85,7 @@ Node.prototype = {
 		return newNode;
 	},
 
+	// remove this node from the list
 	remove : function () {
 		var prev = this._prev;
 		var next = this._next;
@@ -98,19 +114,9 @@ Node.prototype = {
 		this._bounds = null;
 	},
 
-	data : function () {
-		return this._data;
-	},
-
-	prev : function () {
-		return this._prev;
-	},
-
-	next : function () {
-		return this._next;
-	},
-
-	getList : function () {
-		return this._bounds;
-	}
+	// get info
+	data : function () { return this._data; },
+	prev : function () { return this._prev; },
+	next : function () { return this._next; },
+	getList : function () { return this._bounds; }
 };
