@@ -2,7 +2,7 @@ Readme.md										export-ignore
 .gitattributes									export-ignore
 *~													export-ignore
 
-files/digital-calculator-clean.jpg		export-ignore
-files/digital-calculator.jpg				export-ignore
-files/digital-calculator.xcf				export-ignore
-files/digital-calculator-memless.jpg	export-ignore
+img/digital-calculator-clean.jpg		export-ignore
+img/digital-calculator.jpg				export-ignore
+img/digital-calculator.xcf				export-ignore
+img/digital-calculator-memless.jpg	export-ignore
