@@ -15,7 +15,7 @@ body {
 	-webkit-box-shadow: 3px 3px 5px 6px #ccc;
 	box-shadow:         3px 3px 5px 6px #ccc;
 
-	background-image: url("img/digital-calculator-t.jpg");
+	background-image: url("http://romorin.com/calc/img/digital-calculator-t.jpg");
 	background-size: cover;
 }
 .button-text {
