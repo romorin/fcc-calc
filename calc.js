@@ -5,6 +5,9 @@
 var CALC_RATIO = 0.898;
 var CALC_BORDER_SIZE = 0;
 
+var CALC_ORI_HEIGHT = 1315;
+var CALC_ORI_SCREEN_FONT = 55;
+
 var NEGATIVE_CHAR = '¯';
 var FLOAT_CHAR = ',';
 var MAX_PRECISION = 15;
@@ -709,5 +712,9 @@ function resizeCalc() {
 	var calc = jQuery(".calc");
 	calc.width(cWidth);
 	calc.height(cHeight);
+
+	// calc new font size
+	var newSize = CALC_ORI_SCREEN_FONT * cHeight / CALC_ORI_HEIGHT;
+	jQuery('#cscreen').css('font-size', newSize.toString() + 'px');
 }
 jQuery(window).resize(resizeCalc);
