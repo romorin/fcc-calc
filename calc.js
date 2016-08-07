@@ -676,7 +676,7 @@ jQuery(document).ready(function() {
 
 	// handle credits
 	jQuery(".ccredits").click(function (event) {
-		window.location.href = "http://www.freecodecamp.com/romorin";
+		window.location.href = "http://romorin.com";
 	});
 });
 
